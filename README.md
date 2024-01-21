@@ -1,2 +1,2 @@
 # blocky-list-downloader
-Update lists without restarting blocky DNS.
+Update lists without restarting [blocky](https://0xerr0r.github.io/blocky/) DNS.
