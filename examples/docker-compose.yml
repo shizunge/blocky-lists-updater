@@ -68,7 +68,7 @@ services:
       # These are shared volumes with blocky lists downloader.
       - ./lists/sources:/srv/blocky/sources
       - ./lists/watch:/src/blocky/watch
-      # To exam errors in the aggregated lists.
+      # To exam errors in the aggregate lists.
       - blk-downloaded:/src/blocky/downloaded:ro
 
 configs:

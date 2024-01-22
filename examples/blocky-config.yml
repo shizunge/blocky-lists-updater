@@ -5,7 +5,7 @@ blocking:
   blackLists:
     # Ask blocky to download lists from the static-web-server of the lists-downloader.
     # The watch folder contains user defined lists.
-    # The downloaded folder contains aggregated lists for given sources files.
+    # The downloaded folder contains aggregate lists for given sources files.
     my-lists:
       - http://lists-downloader:8080/watch/blocked-list.txt
     default-lists:
@@ -27,6 +27,7 @@ blocking:
   blockType: zeroIp
   blockTTL: 1h
   loading:
+    # Disable build-in refreshing, only listens to lists downloader refreshing requests.
     refreshPeriod: 0
     downloads:
       timeout: 5m
@@ -34,7 +35,7 @@ blocking:
       cooldown: 5s
     concurrency: 4
     strategy: failOnError
-    # Forgive the errors in the aggregated lists. The aggregated one also contains all errors from all of lists.
+    # Forgive the errors in the aggregate lists. The aggregate one also contains all errors from all of lists.
     maxErrorsPerSource: -1
 
 upstreams:

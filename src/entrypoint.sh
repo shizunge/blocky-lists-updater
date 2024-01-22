@@ -51,7 +51,7 @@ start_web_server() {
   local WEB_FOLDER="${1}"
   local WEB_PORT="${2:-8080}"
   [ -z "${WEB_FOLDER}" ] && log INFO "Skip running web server. WEB_FOLDER is empty." && return 1
-  log INFO "Start static-web-server that services ${WEB_FOLDER}"
+  log INFO "Start static-web-server that serves ${WEB_FOLDER}"
   static-web-server --port="${WEB_PORT}" --root="${WEB_FOLDER}" --log-level=warn --compression=false
 }
 
