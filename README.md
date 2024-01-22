@@ -114,4 +114,4 @@ If you have any problems or questions, please contact me through a [GitHub issue
 
 ## Related projects
 
-You may also want to check my [blocky Postgresql dashboard](https://github.com/shizunge/blocky-postgresql).
+You may also like my [blocky Postgresql dashboard](https://github.com/shizunge/blocky-postgresql).
