@@ -1,0 +1,4 @@
+# This file contains a user defined list.
+# Which domains are explicitly blocked.
+blocked.example.com
+

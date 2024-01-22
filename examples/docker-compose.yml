@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+
+  lists-downloader:
+    image: shizunge/blocky-lists-downloader:latest
+    networks:
+      - blocky
+      # Need to reach internet to download lists.
+      - public
+    environment:
+      # Possible values are DEBUG INFO WARN ERROR and NONE. Case sensitive.
+      - "BLD_LOG_LEVEL=INFO"
+      # Add a location to the log messages.
+      - "BLD_NODE_NAME={{.Node.Hostname}}"
+      # Use an empty BLD_BLOCKY_URL to disable sending POST requests to the lists refresh API of blocky.
+      - "BLD_BLOCKY_URL=http://blocky_app.blocky_network:4000"
+      # This should be under the BLD_WEB_FOLDER to be read by blocky.
+      - "BLD_DESTINATION_FOLDER=/web/downloaded"
+      # Define the seconds to wait before the first download.
+      - "BLD_INITIAL_DELAY_SECONDS=120"
+      # Set BLD_INTERVAL_SECONDS to 0 to run the lists downloader only once then exit.
+      - "BLD_INTERVAL_SECONDS=86400"
+      # Blocky won't read the sources files. It reads the downloaded files in the destination folder.
+      - "BLD_SOURCES_FOLDER=/sources"
+      # Use an empty BLD_WATCH_FOLDER to disable watching lists of domains.
+      # This should be under the BLD_WEB_FOLDER to be read by blocky.
+      - "BLD_WATCH_FOLDER=/web/watch"
+      # Use an empty BLD_WEB_FOLDER to disable the static-web-server.
+      - "BLD_WEB_FOLDER=/web"
+      # Port used by the static-web-server.
+      - "BLD_WEB_PORT=8080"
+    volumes:
+      - ./lists/sources/sources:ro
+      - ./lists/watch:/web/watch:ro
+      - bld-downloaded:/web/downloaded
+
+  blocky_app:
+    image: ghcr.io/0xerr0r/blocky
+    cap_add:
+      - NET_BIND_SERVICE
+    networks:
+      - blocky
+      - public
+    # If you are not using docker swam, you can use volumes to share the config file with the container.
+    configs:
+      - source: blocky-config
+        target: /app/config.yml
+        uid: '${PUID}'
+        gid: '${PGID}'
+        mode: 0400
+
+  # Use filebrowser (https://github.com/filebrowser/filebrowser) as the web UI to edit sources and watched lists.
+  filebrowser:
+    image: filebrowser/filebrowser
+    command:
+      - --address=0.0.0.0
+      - --config=/config/config.json
+      - --database=/config/database.db
+      - --root=/srv
+      - --username=example
+      - --password=example
+    networks:
+      - public
+    volumes:
+      - filebrowser:/srv
+      - filebrowser-config:/config
+      # These are shared volumes with blocky lists downloader.
+      - ./lists/sources:/srv/blocky/sources
+      - ./lists/watch:/src/blocky/watch
+      # To exam errors in the aggregated lists.
+      - blk-downloaded:/src/blocky/downloaded:ro
+
+configs:
+  blocky-config:
+    name: blocky-config
+    file: ./blocky-config.yml
+
+volumes:
+  bld-downloaded:
+  filebrowser:
+  filebrowser-config:
+
+networks:
+  public:
+    external: true
+    name: public_network
+  blocky:
+    internal: true
+    driver: overlay
+    attachable: false
+    name: blocky_network
+
