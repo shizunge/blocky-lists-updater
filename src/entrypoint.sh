@@ -60,7 +60,7 @@ notify_via_apprise() {
   local TITLE="${2}"
   local BODY="${3}"
   [ -z "${APPRISE_URL}" ] && log INFO "Skip notifying via apprise. APPRISE_URL is empty." && return 1
-  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\"}" "${APPRISE_URL}"
+  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\"}" "${APPRISE_URL}/notify"
 }
 
 post_blocky_lists_refresh() {
@@ -118,6 +118,7 @@ start_download_service() {
   export LOG_SCOPE="download_service"
   local SOURCES_FOLDER="${1}"
   local DESTINATION_FOLDER="${2}"
+  local POST_DOWNLOAD_CMD="${3}"
   [ -z "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_DOWNLOAD_FILE is empty" && return 1
   local LAST_FILE_TIME=
   local CURRENT_FILE_TIME=
@@ -125,7 +126,7 @@ start_download_service() {
     log DEBUG "Waiting for the next download request."
     inotifywait -e modify -e move -e create -e delete "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" 2>&1 | log_lines DEBUG
     LAST_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}")
-    download_lists "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}"
+    download_lists "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}"
     log INFO "Downloading done. Requesting lists refreshing."
     request_refresh
     CURRENT_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}")
@@ -206,6 +207,7 @@ main() {
   local INTERVAL_SECONDS="${BLD_INTERVAL_SECONDS:-86400}"
   local APPRISE_URL="${BLD_NOTIFICATION_APPRISE_URL:-""}"
   local SOURCES_FOLDER="${BLD_SOURCES_FOLDER:-"/sources"}"
+  local POST_DOWNLOAD_CMD="${BLD_POST_DOWNLOAD_CMD:-""}"
   local WATCH_FOLDER="${BLD_WATCH_FOLDER:-"/web/watch"}"
   local WEB_FOLDER="${BLD_WEB_FOLDER:-"/web"}"
   local WEB_PORT="${BLD_WEB_PORT:-8080}"
@@ -223,6 +225,7 @@ main() {
   log DEBUG "INTERVAL_SECONDS=${INTERVAL_SECONDS}"
   log DEBUG "APPRISE_URL=${APPRISE_URL}"
   log DEBUG "SOURCES_FOLDER=${SOURCES_FOLDER}"
+  log DEBUG "POST_DOWNLOAD_CMD=${POST_DOWNLOAD_CMD}"
   log DEBUG "WATCH_FOLDER=${WATCH_FOLDER}"
   log DEBUG "WEB_FOLDER=${WEB_FOLDER}"
   log DEBUG "WEB_PORT=${WEB_PORT}"
@@ -232,7 +235,7 @@ main() {
   sleep 1
   start_refresh_service "${BLOCKY_URL}" "${APPRISE_URL}" &
   sleep 1
-  start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" &
+  start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" &
   sleep 1
   start_watching_files "${WATCH_FOLDER}" &
   sleep 1
