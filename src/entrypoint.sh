@@ -60,7 +60,7 @@ notify_via_apprise() {
   local TITLE="${2}"
   local BODY="${3}"
   [ -z "${APPRISE_URL}" ] && log INFO "Skip notifying via apprise. APPRISE_URL is empty." && return 1
-  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\"}" "${APPRISE_URL}/notify"
+  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\"}" "${APPRISE_URL}"
 }
 
 post_blocky_lists_refresh() {
