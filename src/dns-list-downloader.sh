@@ -51,7 +51,7 @@ download_from_single_source_file() {
   TEMP_DIR=$(mktemp -d)
   log DEBUG "TEMP_DIR=${TEMP_DIR}"
   mkdir -p "${TEMP_DIR}"
-  local ACCUMULATOR_FILE=${TEMP_DIR}/${DESTINATION_FILE}-merged.txt
+  local ACCUMULATOR_FILE="${TEMP_DIR}/${DESTINATION_FILE}-merged.txt"
   local ACCUMULATED_ERRORS=0
   rm_check "${ACCUMULATOR_FILE}"
   touch "${ACCUMULATOR_FILE}"
@@ -63,7 +63,7 @@ download_from_single_source_file() {
     if [ -z "${SOURCE_LINE}" ]; then
       continue
     fi
-    if [ "${SOURCE_LINE:0:1}" == "#" ]; then
+    if [ "${SOURCE_LINE:0:1}" = "#" ]; then
       log DEBUG "Skip comment: ${SOURCE_LINE}"
       continue
     fi
@@ -80,7 +80,7 @@ download_from_single_source_file() {
     log INFO "Downloading ${SOURCE_LINE}"
     echo "####################" >> "${ACCUMULATOR_FILE}"
     echo "### Downloaded from ${SOURCE_LINE}" >> "${ACCUMULATOR_FILE}"
-    local CURRENT_FILE=${TEMP_DIR}/${DESTINATION_FILE}-current.txt
+    local CURRENT_FILE="${TEMP_DIR}/${DESTINATION_FILE}-current.txt"
     local RETRIES=0
     local CURRENT_ERROR=0
     rm_check "${CURRENT_FILE}"
