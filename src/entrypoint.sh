@@ -148,9 +148,8 @@ start_watching_sources() {
   local SOURCES_FOLDER="${1}"
   local INTERVAL_SECONDS="${2:-0}"
   local INITIAL_DELAY_SECONDS="${3:-0}"
-  [ "${INTERVAL_SECONDS}" -le 0 ] && log WARN "Skip watching sources. INTERVAL_SECONDS ${INTERVAL_SECONDS} is equal to or less than 0." && return 1
-  local NEXT_RUN_TARGET_TIME=
-  local SLEEP_SECONDS=
+  [ -z "${SOURCES_FOLDER}" ] && log WARN "Skip watching sources. SOURCES_FOLDER is empty." && return 1
+  local NEXT_RUN_TARGET_TIME TIMEOUT_ARG TIMEOUT_SEC
   local LOG=
   if [ "${INITIAL_DELAY_SECONDS}" -gt 0 ]; then
     log INFO "Wait ${INITIAL_DELAY_SECONDS} seconds before the first download."
@@ -161,9 +160,14 @@ start_watching_sources() {
   request_download
   log INFO "Start watching changes in ${SOURCES_FOLDER}."
   while true; do
-    log INFO "Scheduling next download at $(busybox date -d "@${NEXT_RUN_TARGET_TIME}" -Iseconds)."
-    SLEEP_SECONDS=$((NEXT_RUN_TARGET_TIME - $(date +%s)))
-    if LOG=$(inotifywait -q -e modify -e move -e create -e delete --timeout "${SLEEP_SECONDS}" "${SOURCES_FOLDER}" 2>&1); then
+    TIMEOUT_ARG=""
+    TIMEOUT_SEC=""
+    if [ "${INTERVAL_SECONDS}" -gt 0 ]; then
+      log INFO "Scheduling next download at $(busybox date -d "@${NEXT_RUN_TARGET_TIME}" -Iseconds)."
+      TIMEOUT_ARG="--timeout"
+      TIMEOUT_SEC=$(( NEXT_RUN_TARGET_TIME - $(date +%s) ))
+    fi
+    if LOG=$(inotifywait -q -e modify -e move -e create -e delete "${TIMEOUT_ARG}" "${TIMEOUT_SEC}" "${SOURCES_FOLDER}" 2>&1); then
       # 0 - An event you asked to watch for was received.
       echo "${LOG}" | log_lines DEBUG
       log INFO "Found changes in ${SOURCES_FOLDER}. Requesting lists downloading."
@@ -217,11 +221,7 @@ main() {
   start_watching_files "${WATCH_FOLDER}" &
   sleep 1
   if ! start_watching_sources "${SOURCES_FOLDER}" "${INTERVAL_SECONDS}" "${INITIAL_DELAY_SECONDS}"; then
-    log INFO "Download once then exit."
-    log INFO "Wait ${INITIAL_DELAY_SECONDS} seconds before the first download."
-    sleep "${INITIAL_DELAY_SECONDS}"
-    download_lists "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}"
-    post_blocky_lists_refresh "${BLOCKY_URL}"
+    while true; do sleep 86400; done
   fi
 }
 
