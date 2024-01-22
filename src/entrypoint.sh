@@ -50,32 +50,46 @@ init_requests() {
 start_web_server() {
   local WEB_FOLDER="${1}"
   local WEB_PORT="${2:-8080}"
-  [ -z "${WEB_FOLDER}" ] && log WARN "Skip running web server due to WEB_FOLDER is empty." && return 1
+  [ -z "${WEB_FOLDER}" ] && log INFO "Skip running web server. WEB_FOLDER is empty." && return 1
   log INFO "Start static-web-server that services ${WEB_FOLDER}"
   static-web-server --port="${WEB_PORT}" --root="${WEB_FOLDER}" --log-level=warn --compression=false
 }
 
+notify_via_apprise() {
+  local APPRISE_URL="${1}"
+  local TITLE="${2}"
+  local BODY="${3}"
+  [ -z "${APPRISE_URL}" ] && log INFO "Skip notifying via apprise. APPRISE_URL is empty." && return 1
+  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\"}" "${APPRISE_URL}"
+}
+
 post_blocky_lists_refresh() {
   local BLOCKY_URL="${1}"
-  [ -z "${BLOCKY_URL}" ] && log WARN "Skip sending a request to blocky. BLOCKY_URL is empty." && return 1
+  local APPRISE_URL="${2}"
+  [ -z "${BLOCKY_URL}" ] && log INFO "Skip sending a request to blocky. BLOCKY_URL is empty." && return 1
   local API="/api/lists/refresh"
   local START_TIME=
   local TIME_ELAPSED=
   local LOG=
+  local NOTIFY_TITLE=
   log INFO "Sending a request to blocky to refresh lists."
   START_TIME=$(date +%s)
   if LOG=$(curl -X POST --show-error --silent --head "${BLOCKY_URL}${API}" 2>&1); then
     echo "${LOG}" | log_lines INFO
+    NOTIFY_TITLE="Blocky lists refresh succeeded"
   else
     echo "${LOG}" | log_lines ERROR
+    NOTIFY_TITLE="Error during blocky lists refresh"
   fi
   TIME_ELAPSED=$(time_elapsed_since "${START_TIME}")
   log INFO "Refreshing lists done. Use ${TIME_ELAPSED}."
+  notify_via_apprise "${APPRISE_URL}" "${NOTIFY_TITLE}" "${LOG}"
 }
 
 start_refresh_service() {
   export LOG_SCOPE="refresh_service"
   local BLOCKY_URL="${1}"
+  local APPRISE_URL="${2}"
   [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
   local LAST_FILE_TIME=
   local CURRENT_FILE_TIME=
@@ -83,7 +97,7 @@ start_refresh_service() {
     log DEBUG "Waiting for the next refresh request."
     inotifywait -e modify -e move -e create -e delete "${STATIC_VAR_REQUEST_REFRESH_FILE}" 2>&1 | log_lines DEBUG
     LAST_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_REFRESH_FILE}")
-    post_blocky_lists_refresh "${BLOCKY_URL}"
+    post_blocky_lists_refresh "${BLOCKY_URL}" "${APPRISE_URL}"
     CURRENT_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_REFRESH_FILE}")
     log DEBUG "LAST_FILE_TIME=${LAST_FILE_TIME}"
     log DEBUG "CURRENT_FILE_TIME=${CURRENT_FILE_TIME}"
@@ -133,7 +147,7 @@ request_download() {
 start_watching_files() {
   export LOG_SCOPE="watch_files"
   local WATCH_FOLDER="${1}"
-  [ -z "${WATCH_FOLDER}" ] && log WARN "Skip watching files. WATCH_FOLDER is empty." && return 1
+  [ -z "${WATCH_FOLDER}" ] && log INFO "Skip watching files. WATCH_FOLDER is empty." && return 1
   log INFO "Start watching changes in ${WATCH_FOLDER}."
   while true; do
     log DEBUG "Waiting for changes in ${WATCH_FOLDER}."
@@ -148,7 +162,7 @@ start_watching_sources() {
   local SOURCES_FOLDER="${1}"
   local INTERVAL_SECONDS="${2:-0}"
   local INITIAL_DELAY_SECONDS="${3:-0}"
-  [ -z "${SOURCES_FOLDER}" ] && log WARN "Skip watching sources. SOURCES_FOLDER is empty." && return 1
+  [ -z "${SOURCES_FOLDER}" ] && log INFO "Skip watching sources. SOURCES_FOLDER is empty." && return 1
   local NEXT_RUN_TARGET_TIME TIMEOUT_ARG TIMEOUT_SEC
   local LOG=
   if [ "${INITIAL_DELAY_SECONDS}" -gt 0 ]; then
@@ -190,6 +204,7 @@ main() {
   local DESTINATION_FOLDER="${BLD_DESTINATION_FOLDER:-"/web/downloaded"}"
   local INITIAL_DELAY_SECONDS="${BLD_INITIAL_DELAY_SECONDS:-0}"
   local INTERVAL_SECONDS="${BLD_INTERVAL_SECONDS:-86400}"
+  local APPRISE_URL="${BLD_NOTIFICATION_APPRISE_URL:-""}"
   local SOURCES_FOLDER="${BLD_SOURCES_FOLDER:-"/sources"}"
   local WATCH_FOLDER="${BLD_WATCH_FOLDER:-"/web/watch"}"
   local WEB_FOLDER="${BLD_WEB_FOLDER:-"/web"}"
@@ -206,6 +221,7 @@ main() {
   log DEBUG "DESTINATION_FOLDER=${DESTINATION_FOLDER}"
   log DEBUG "INITIAL_DELAY_SECONDS=${INITIAL_DELAY_SECONDS}"
   log DEBUG "INTERVAL_SECONDS=${INTERVAL_SECONDS}"
+  log DEBUG "APPRISE_URL=${APPRISE_URL}"
   log DEBUG "SOURCES_FOLDER=${SOURCES_FOLDER}"
   log DEBUG "WATCH_FOLDER=${WATCH_FOLDER}"
   log DEBUG "WEB_FOLDER=${WEB_FOLDER}"
@@ -214,7 +230,7 @@ main() {
   init_requests
   start_web_server "${WEB_FOLDER}" "${WEB_PORT}" &
   sleep 1
-  start_refresh_service "${BLOCKY_URL}" &
+  start_refresh_service "${BLOCKY_URL}" "${APPRISE_URL}" &
   sleep 1
   start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" &
   sleep 1
