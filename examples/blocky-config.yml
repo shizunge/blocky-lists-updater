@@ -10,9 +10,9 @@ blocking:
       - http://lists-downloader:8080/watch/blocked-list.txt
     default-lists:
       - http://lists-downloader:8080/downloaded/default-lists.txt
-    list-one:
+    group-one:
       - http://lists-downloader:8080/downloaded/list-one.txt
-    list-two:
+    group-two:
       - http://lists-downloader:8080/downloaded/list-two.txt
   whiteLists:
     my-lists:
@@ -22,8 +22,8 @@ blocking:
     default:
       - my-lists
       - default-lists
-      - list-one
-      - list-two
+      - group-one
+      - group-two
   blockType: zeroIp
   blockTTL: 1h
   loading:

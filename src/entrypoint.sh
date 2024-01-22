@@ -186,7 +186,7 @@ main() {
   local DESTINATION_FOLDER="${BLD_DESTINATION_FOLDER:-"/web/downloaded"}"
   local INITIAL_DELAY_SECONDS="${BLD_INITIAL_DELAY_SECONDS:-0}"
   local INTERVAL_SECONDS="${BLD_INTERVAL_SECONDS:-86400}"
-  local SOURCES_FOLDER="${BLD_SOURCES_FOLDER:-"/web/sources"}"
+  local SOURCES_FOLDER="${BLD_SOURCES_FOLDER:-"/sources"}"
   local WATCH_FOLDER="${BLD_WATCH_FOLDER:-"/web/watch"}"
   local WEB_FOLDER="${BLD_WEB_FOLDER:-"/web"}"
   local WEB_PORT="${BLD_WEB_PORT:-8080}"

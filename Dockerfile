@@ -10,8 +10,8 @@ LABEL org.opencontainers.image.licenses=GPLv3
 RUN mkdir -p /src
 RUN mkdir -p /web
 RUN mkdir -p /web/watch
-RUN mkdir -p /web/sources
 RUN mkdir -p /web/downloaded
+RUN mkdir -p /sources
 
 RUN apk add --update --no-cache curl tzdata inotify-tools bash
 
