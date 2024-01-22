@@ -1,4 +1,4 @@
-# This file contains URLs to tell the lists downloader where to download the blocking lists or allowing lists.
+# This file contains URLs to tell the lists updater where to download the blocking lists or allowing lists.
 # The result will be a file with the same name (under the destination folder), which concatenates contents of all lists.
 # Comments are allowed
 https://github.com/StevenBlack/hosts

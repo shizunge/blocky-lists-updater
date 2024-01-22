@@ -2,34 +2,34 @@ version: '3.8'
 
 services:
 
-  lists-downloader:
-    image: shizunge/blocky-lists-downloader:latest
+  lists-updater:
+    image: shizunge/blocky-lists-updater:latest
     networks:
       - blocky
       # Need to reach internet to download lists.
       - public
     environment:
       # Possible values are DEBUG INFO WARN ERROR and NONE. Case sensitive.
-      - "BLD_LOG_LEVEL=INFO"
+      - "BLU_LOG_LEVEL=INFO"
       # Add a location to the log messages.
-      - "BLD_NODE_NAME={{.Node.Hostname}}"
-      # Use an empty BLD_BLOCKY_URL to disable sending POST requests to the lists refresh API of blocky.
-      - "BLD_BLOCKY_URL=http://blocky_app.blocky_network:4000"
-      # This should be under the BLD_WEB_FOLDER to be read by blocky.
-      - "BLD_DESTINATION_FOLDER=/web/downloaded"
+      - "BLU_NODE_NAME={{.Node.Hostname}}"
+      # Use an empty BLU_BLOCKY_URL to disable sending POST requests to the lists refresh API of blocky.
+      - "BLU_BLOCKY_URL=http://blocky_app.blocky_network:4000"
+      # This should be under the BLU_WEB_FOLDER to be read by blocky.
+      - "BLU_DESTINATION_FOLDER=/web/downloaded"
       # Define the seconds to wait before the first download.
-      - "BLD_INITIAL_DELAY_SECONDS=120"
-      # Set BLD_INTERVAL_SECONDS to 0 to run the lists downloader only once then exit.
-      - "BLD_INTERVAL_SECONDS=86400"
+      - "BLU_INITIAL_DELAY_SECONDS=120"
+      # Set BLU_INTERVAL_SECONDS to 0 to run the lists updater only once then exit.
+      - "BLU_INTERVAL_SECONDS=86400"
       # Blocky won't read the sources files. It reads the downloaded files in the destination folder.
-      - "BLD_SOURCES_FOLDER=/sources"
-      # Use an empty BLD_WATCH_FOLDER to disable watching lists of domains.
-      # This should be under the BLD_WEB_FOLDER to be read by blocky.
-      - "BLD_WATCH_FOLDER=/web/watch"
-      # Use an empty BLD_WEB_FOLDER to disable the static-web-server.
-      - "BLD_WEB_FOLDER=/web"
+      - "BLU_SOURCES_FOLDER=/sources"
+      # Use an empty BLU_WATCH_FOLDER to disable watching lists of domains.
+      # This should be under the BLU_WEB_FOLDER to be read by blocky.
+      - "BLU_WATCH_FOLDER=/web/watch"
+      # Use an empty BLU_WEB_FOLDER to disable the static-web-server.
+      - "BLU_WEB_FOLDER=/web"
       # Port used by the static-web-server.
-      - "BLD_WEB_PORT=8080"
+      - "BLU_WEB_PORT=8080"
     volumes:
       - ./lists/sources/sources:ro
       - ./lists/watch:/web/watch:ro
@@ -65,7 +65,7 @@ services:
     volumes:
       - filebrowser:/srv
       - filebrowser-config:/config
-      # These are shared volumes with blocky lists downloader.
+      # These are shared volumes with blocky lists updater.
       - ./lists/sources:/srv/blocky/sources
       - ./lists/watch:/src/blocky/watch
       # To exam errors in the aggregate lists.

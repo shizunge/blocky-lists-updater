@@ -1,19 +1,19 @@
-# Example configuration file of blocky DNS for the lists downloader (https://github.com/shizunge/blocky-lists-downloader)
+# Example configuration file of blocky DNS for the lists updater (https://github.com/shizunge/blocky-lists-updater)
 blocking:
   # definition of blacklist groups. Can be external link (http/https) or local file
   # The static-web-server allows multiple blocky instance to access the same set of files.
   blackLists:
-    # Ask blocky to download lists from the static-web-server of the lists-downloader.
+    # Ask blocky to download lists from the static-web-server of the lists-updater.
     # The watch folder contains user defined lists.
     # The downloaded folder contains aggregate lists for given sources files.
     my-lists:
-      - http://lists-downloader:8080/watch/blocked-list.txt
+      - http://lists-updater:8080/watch/blocked-list.txt
     default-lists:
-      - http://lists-downloader:8080/downloaded/default-lists.txt
+      - http://lists-updater:8080/downloaded/default-lists.txt
     group-one:
-      - http://lists-downloader:8080/downloaded/list-one.txt
+      - http://lists-updater:8080/downloaded/list-one.txt
     group-two:
-      - http://lists-downloader:8080/downloaded/list-two.txt
+      - http://lists-updater:8080/downloaded/list-two.txt
   whiteLists:
     my-lists:
       - http://lists-donwloader:8080/watch/allowed-list.txt
@@ -27,7 +27,7 @@ blocking:
   blockType: zeroIp
   blockTTL: 1h
   loading:
-    # Disable build-in refreshing, only listens to lists downloader refreshing requests.
+    # Disable build-in refreshing, only listens to lists updater refreshing requests.
     refreshPeriod: 0
     downloads:
       timeout: 5m

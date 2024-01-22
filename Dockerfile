@@ -2,7 +2,7 @@ FROM joseluisq/static-web-server:2-alpine AS static-web-server
 
 FROM alpine
 
-LABEL org.opencontainers.image.title=blocky-list-downloader
+LABEL org.opencontainers.image.title=blocky-list-updater
 LABEL org.opencontainers.image.description="Download and watch source lists for blocky DNS."
 LABEL org.opencontainers.image.vendor="Shizun Ge"
 LABEL org.opencontainers.image.licenses=GPLv3
