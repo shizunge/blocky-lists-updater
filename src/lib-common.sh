@@ -198,6 +198,19 @@ read_config() {
   echo "${CONFIG}"
 }
 
+# If env is unset, return the default value, otherwise return the value of env
+# This differentiates empty string and unset env.
+read_env() {
+  local VNAME="${1}"; shift
+  [ -z "${VNAME}" ] && return 1
+  if env | grep -q "${VNAME}="; then
+    eval "echo \"\${${VNAME}}\""
+  else
+    echo "${@}"
+  fi
+  return 0
+}
+
 swarm_network_arguments() {
   if [ -z "${NETWORK_NAME}" ]; then
     echo ""

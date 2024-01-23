@@ -91,6 +91,7 @@ start_refresh_service() {
   local BLOCKY_URL="${1}"
   local APPRISE_URL="${2}"
   [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
+  [ -z "${BLOCKY_URL}" ] && log INFO "Skip refresh service BLOCKY_URL is empty." && return 1
   local LAST_FILE_TIME=
   local CURRENT_FILE_TIME=
   while true; do
@@ -120,6 +121,7 @@ start_download_service() {
   local DESTINATION_FOLDER="${2}"
   local POST_DOWNLOAD_CMD="${3}"
   [ -z "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_DOWNLOAD_FILE is empty" && return 1
+  [ -z "${SOURCES_FOLDER}" ] && log INFO "Skip download service. SOURCES_FOLDER is empty." && return 1
   local LAST_FILE_TIME=
   local CURRENT_FILE_TIME=
   while true; do
@@ -201,22 +203,24 @@ main() {
   LOG_LEVEL="${BLU_LOG_LEVEL:-${LOG_LEVEL}}"
   NODE_NAME="${BLU_NODE_NAME:-${NODE_NAME}}"
   export LOG_LEVEL NODE_NAME
-  local BLOCKY_URL="${BLU_BLOCKY_URL:-""}"
-  local DESTINATION_FOLDER="${BLU_DESTINATION_FOLDER:-"/web/downloaded"}"
-  local INITIAL_DELAY_SECONDS="${BLU_INITIAL_DELAY_SECONDS:-0}"
-  local INTERVAL_SECONDS="${BLU_INTERVAL_SECONDS:-86400}"
-  local APPRISE_URL="${BLU_NOTIFICATION_APPRISE_URL:-""}"
-  local SOURCES_FOLDER="${BLU_SOURCES_FOLDER:-"/sources"}"
-  local POST_DOWNLOAD_CMD="${BLU_POST_DOWNLOAD_CMD:-""}"
-  local WATCH_FOLDER="${BLU_WATCH_FOLDER:-"/web/watch"}"
-  local WEB_FOLDER="${BLU_WEB_FOLDER:-"/web"}"
-  local WEB_PORT="${BLU_WEB_PORT:-8080}"
+  local BLOCKY_URL DESTINATION_FOLDER INITIAL_DELAY_SECONDS INTERVAL_SECONDS APPRISE_URL
+  local SOURCES_FOLDER POST_DOWNLOAD_CMD WATCH_FOLDER WEB_FOLDER WEB_PORT
+  BLOCKY_URL=$(read_env "BLU_BLOCKY_URL" "")
+  DESTINATION_FOLDER=$(read_env "BLU_DESTINATION_FOLDER" "/web/downloaded")
+  INITIAL_DELAY_SECONDS=$(read_env "BLU_INITIAL_DELAY_SECONDS" 0)
+  INTERVAL_SECONDS=$(read_env "BLU_INTERVAL_SECONDS" 86400)
+  APPRISE_URL=$(read_env "BLU_NOTIFICATION_APPRISE_URL" "")
+  SOURCES_FOLDER=$(read_env "BLU_SOURCES_FOLDER" "/sources")
+  POST_DOWNLOAD_CMD=$(read_env "BLU_POST_DOWNLOAD_CMD" "")
+  WATCH_FOLDER=$(read_env "BLU_WATCH_FOLDER" "/web/watch")
+  WEB_FOLDER=$(read_env "BLU_WEB_FOLDER" "/web")
+  WEB_PORT=$(read_env "BLU_WEB_PORT" 8080)
   if ! is_number "${INITIAL_DELAY_SECONDS}"; then
-    log ERROR "BLU_INITIAL_DELAY_SECONDS must be a number. Got \"${BLU_INITIAL_DELAY_SECONDS}\"."
+    log ERROR "BLU_INITIAL_DELAY_SECONDS must be a number. Got \"${BLU_INITIAL_DELAY_SECONDS:-""}\"."
     return 1;
   fi
   if ! is_number "${INTERVAL_SECONDS}"; then
-    log ERROR "BLU_INTERVAL_SECONDS must be a number. Got \"${BLU_INTERVAL_SECONDS}\"."
+    log ERROR "BLU_INTERVAL_SECONDS must be a number. Got \"${BLU_INTERVAL_SECONDS:-""}\"."
     return 1;
   fi
   log DEBUG "BLOCKY_URL=${BLOCKY_URL}"
