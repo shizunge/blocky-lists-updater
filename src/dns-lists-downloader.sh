@@ -102,8 +102,14 @@ download_from_single_source_file() {
     fi
     fix_list "${CURRENT_FILE}"
     if [ -n "${POST_DOWNLOAD_CMD}" ]; then
+      local LOG=
       log INFO "Run POST_DOWNLOAD_CMD: ${POST_DOWNLOAD_CMD} ${CURRENT_FILE}"
-      eval "${POST_DOWNLOAD_CMD} ${CURRENT_FILE}"
+      if LOG=$(eval "${POST_DOWNLOAD_CMD} ${CURRENT_FILE}" 2>&1); then
+        echo "${LOG}" | log_lines INFO
+      else
+        log WARN "POST_DOWNLOAD_CMD: \"${POST_DOWNLOAD_CMD} ${CURRENT_FILE}\" returned a non-zero value ${?}."
+        echo "${LOG}" | log_lines WARN
+      fi
     fi
     log DEBUG "Merging ${CURRENT_FILE} to ${ACCUMULATOR_FILE}"
     # SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects.
