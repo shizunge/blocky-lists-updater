@@ -211,6 +211,29 @@ read_env() {
   return 0
 }
 
+eval_cmd() {
+  local TAG="${1}"; shift;
+  local CMD="${*}"
+  [ -z "${CMD}" ] && return 0
+  local OLD_LOG_SCOPE="${LOG_SCOPE}"
+  local SEP=" "
+  [ -z "${OLD_LOG_SCOPE}" ] && SEP=""
+  export LOG_SCOPE="${OLD_LOG_SCOPE}${SEP}${TAG}"
+  local LOG=
+  local RT=0
+  log INFO "Run ${TAG} command: ${CMD}"
+  if LOG=$(eval "${CMD}"); then
+    echo "${LOG}" | log_lines INFO
+  else
+    RT=$?
+    echo "${LOG}" | log_lines WARN
+    log WARN "${TAG} command returned a non-zero value ${RT}."
+  fi
+  log INFO "Finish ${TAG} command."
+  export LOG_SCOPE="${OLD_LOG_SCOPE}"
+  return "${RT}"
+}
+
 swarm_network_arguments() {
   if [ -z "${NETWORK_NAME}" ]; then
     echo ""
