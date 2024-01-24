@@ -57,10 +57,16 @@ start_web_server() {
 
 notify_via_apprise() {
   local APPRISE_URL="${1}"
-  local TITLE="${2}"
-  local BODY="${3}"
+  local TYPE="${2}"
+  local TITLE="${3}"
+  local BODY="${4}"
   [ -z "${APPRISE_URL}" ] && log INFO "Skip notifying via apprise. APPRISE_URL is empty." && return 1
-  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\"}" "${APPRISE_URL}"
+  # info, success, warning, failure
+  if [ "${TYPE}" != "info" ] && [ "${TYPE}" != "success" ] && [ "${TYPE}" != "warning" ] && [ "${TYPE}" != "failure" ]; then
+    TYPE="info"
+  fi
+  [ -z "${BODY}" ] && BODY="${TITLE}"
+  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\", \"type\": \"${TYPE}\"}" "${APPRISE_URL}"
 }
 
 post_blocky_lists_refresh() {
@@ -71,19 +77,22 @@ post_blocky_lists_refresh() {
   local START_TIME=
   local TIME_ELAPSED=
   local LOG=
-  local NOTIFY_TITLE=
+  local NOTIFICATION_TYPE="info"
+  local NOTIFICATION_TITLE=
   log INFO "Sending a request to blocky to refresh lists."
   START_TIME=$(date +%s)
   if LOG=$(curl -X POST --show-error --silent --head "${BLOCKY_URL}${API}" 2>&1); then
     echo "${LOG}" | log_lines INFO
-    NOTIFY_TITLE="Blocky lists refresh succeeded"
+    NOTIFICATION_TYPE="success"
+    NOTIFICATION_TITLE="Blocky lists refresh succeeded"
   else
     echo "${LOG}" | log_lines ERROR
-    NOTIFY_TITLE="Error during blocky lists refresh"
+    NOTIFICATION_TYPE="failure"
+    NOTIFICATION_TITLE="Error during blocky lists refresh"
   fi
   TIME_ELAPSED=$(time_elapsed_since "${START_TIME}")
   log INFO "Refreshing lists done. Use ${TIME_ELAPSED}."
-  notify_via_apprise "${APPRISE_URL}" "${NOTIFY_TITLE}" "${LOG}"
+  notify_via_apprise "${APPRISE_URL}" "${NOTIFICATION_TYPE}" "${NOTIFICATION_TITLE}" "${LOG}"
 }
 
 start_refresh_service() {
