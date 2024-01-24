@@ -15,16 +15,16 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-rm_check() {
+_rm_check() {
   if [ -z "${1}" ]; then return 1; fi
   test -e "${1}" && log DEBUG "Removing ${1}" && rm -r "${1}"
 }
 
-file_size() {
+_file_size() {
   du -h "${1}" | cut -f1
 }
 
-fix_list() {
+_fix_list() {
   # fix "0.0.0.0abc.com" -> "0.0.0.0 abc.com"
   sed -i 's/^0\.0\.0\.0\([^ ].*\)/0.0.0.0 \1/' "${1}"
   # fix "0 abc.com" -> "0.0.0.0 abc.com"
@@ -35,7 +35,7 @@ fix_list() {
   sed -i 's/^\(!.*\)$/# \1/' "${1}"
 }
 
-download_from_single_source_file() {
+_download_from_single_source_file() {
   local SOURCE_FILE="${1}"
   local DESTINATION_FOLDER="${2}"
   local POST_DOWNLOAD_CMD="${3}"
@@ -54,7 +54,7 @@ download_from_single_source_file() {
   mkdir -p "${TEMP_DIR}"
   local ACCUMULATOR_FILE="${TEMP_DIR}/${DESTINATION_FILE}-merged.txt"
   local ACCUMULATED_ERRORS=0
-  rm_check "${ACCUMULATOR_FILE}"
+  _rm_check "${ACCUMULATOR_FILE}"
   touch "${ACCUMULATOR_FILE}"
   # pipeline causes subshell
   # ( cat "${SOURCE_FILE}"; echo; ) | while read -r S; do
@@ -84,10 +84,10 @@ download_from_single_source_file() {
     local CURRENT_FILE="${TEMP_DIR}/${DESTINATION_FILE}-current.txt"
     local RETRIES=0
     local CURRENT_ERROR=0
-    rm_check "${CURRENT_FILE}"
+    _rm_check "${CURRENT_FILE}"
     while ! busybox wget -q -O "${CURRENT_FILE}" "${SOURCE_LINE}"; do
       CURRENT_ERROR=$?
-      rm_check "${CURRENT_FILE}"
+      _rm_check "${CURRENT_FILE}"
       if [ ${RETRIES} -ge ${RETRY_MAX} ]; then
         break;
       fi
@@ -100,7 +100,7 @@ download_from_single_source_file() {
       ACCUMULATED_ERRORS=$((ACCUMULATED_ERRORS + 1))
       continue
     fi
-    fix_list "${CURRENT_FILE}"
+    _fix_list "${CURRENT_FILE}"
     eval_cmd "post-download" "${POST_DOWNLOAD_CMD} ${CURRENT_FILE}"
     log DEBUG "Merging ${CURRENT_FILE} to ${ACCUMULATOR_FILE}"
     # SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects.
@@ -108,16 +108,16 @@ download_from_single_source_file() {
     echo "" >> "${ACCUMULATOR_FILE}"
     cat "${CURRENT_FILE}" >> "${ACCUMULATOR_FILE}"
     echo "" >> "${ACCUMULATOR_FILE}"
-    log INFO "Downloaded  ${SOURCE_LINE}. Size is $(file_size "${CURRENT_FILE}")."
-    rm_check "${CURRENT_FILE}"
+    log INFO "Downloaded  ${SOURCE_LINE}. Size is $(_file_size "${CURRENT_FILE}")."
+    _rm_check "${CURRENT_FILE}"
   done < <(cat "${SOURCE_FILE}"; echo;)
   log DEBUG "Moving ${ACCUMULATOR_FILE} to ${DESTINATION_FILE}"
   local DST_PATH=
   DST_PATH="${DESTINATION_FOLDER}/${DESTINATION_FILE}"
   mv "${ACCUMULATOR_FILE}" "${DST_PATH}"
-  rm_check "${TEMP_DIR}"
+  _rm_check "${TEMP_DIR}"
   log INFO "=============================="
-  log INFO "=== Download done for ${DESTINATION_FILE}. Size is $(file_size "${DST_PATH}")."
+  log INFO "=== Download done for ${DESTINATION_FILE}. Size is $(_file_size "${DST_PATH}")."
   return ${ACCUMULATED_ERRORS}
 }
 
@@ -149,7 +149,7 @@ download_lists() {
   local ACCUMULATED_ERRORS=0
   SOURCE_FILE_LIST=$(find "${SOURCES_FOLDER}" -type f | sort)
   for SOURCE_FILE in ${SOURCE_FILE_LIST}; do
-    download_from_single_source_file "${SOURCE_FILE}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}"
+    _download_from_single_source_file "${SOURCE_FILE}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}"
     ACCUMULATED_ERRORS=$((ACCUMULATED_ERRORS + $?))
   done
   local DIR_SIZE=

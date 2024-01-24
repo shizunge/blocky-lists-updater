@@ -55,7 +55,7 @@ start_web_server() {
   static-web-server --port="${WEB_PORT}" --root="${WEB_FOLDER}" --log-level=warn --compression=false
 }
 
-notify_via_apprise() {
+_notify_via_apprise() {
   local APPRISE_URL="${1}"
   local TYPE="${2}"
   local TITLE="${3}"
@@ -69,7 +69,7 @@ notify_via_apprise() {
   curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\", \"type\": \"${TYPE}\"}" "${APPRISE_URL}"
 }
 
-post_blocky_lists_refresh() {
+_post_blocky_lists_refresh() {
   local BLOCKY_URL="${1}"
   local APPRISE_URL="${2}"
   [ -z "${BLOCKY_URL}" ] && log INFO "Skip sending a request to blocky. BLOCKY_URL is empty." && return 1
@@ -92,7 +92,7 @@ post_blocky_lists_refresh() {
   fi
   TIME_ELAPSED=$(time_elapsed_since "${START_TIME}")
   log INFO "Refreshing lists done. Use ${TIME_ELAPSED}."
-  notify_via_apprise "${APPRISE_URL}" "${NOTIFICATION_TYPE}" "${NOTIFICATION_TITLE}" "${LOG}"
+  _notify_via_apprise "${APPRISE_URL}" "${NOTIFICATION_TYPE}" "${NOTIFICATION_TITLE}" "${LOG}"
 }
 
 start_refresh_service() {
@@ -107,19 +107,19 @@ start_refresh_service() {
     log DEBUG "Waiting for the next refresh request."
     inotifywait -e modify -e move -e create -e delete "${STATIC_VAR_REQUEST_REFRESH_FILE}" 2>&1 | log_lines DEBUG
     LAST_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_REFRESH_FILE}")
-    post_blocky_lists_refresh "${BLOCKY_URL}" "${APPRISE_URL}"
+    _post_blocky_lists_refresh "${BLOCKY_URL}" "${APPRISE_URL}"
     CURRENT_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_REFRESH_FILE}")
     log DEBUG "LAST_FILE_TIME=${LAST_FILE_TIME}"
     log DEBUG "CURRENT_FILE_TIME=${CURRENT_FILE_TIME}"
     if [ "${CURRENT_FILE_TIME}" -gt "${LAST_FILE_TIME}" ]; then
       # During refreshing, the source or watched files changed again.
       log DEBUG "Receive another request during refreshing lists."
-      sleep 2 && request_refresh &
+      sleep 2 && _request_refresh &
     fi
   done
 }
 
-request_refresh() {
+_request_refresh() {
   [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
   date +%s > "${STATIC_VAR_REQUEST_REFRESH_FILE}"
 }
@@ -139,19 +139,19 @@ start_download_service() {
     LAST_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}")
     download_lists "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}"
     log INFO "Downloading done. Requesting lists refreshing."
-    request_refresh
+    _request_refresh
     CURRENT_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}")
     log DEBUG "LAST_FILE_TIME=${LAST_FILE_TIME}"
     log DEBUG "CURRENT_FILE_TIME=${CURRENT_FILE_TIME}"
     if [ "${CURRENT_FILE_TIME}" -gt "${LAST_FILE_TIME}" ]; then
       # During downloading, the source files changed again.
       log DEBUG "Receive another download request during downloading."
-      sleep 2 && request_download &
+      sleep 2 && _request_download &
     fi
   done
 }
 
-request_download() {
+_request_download() {
   [ -z "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_DOWNLOAD_FILE is empty" && return 1
   date +%s > "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}"
 }
@@ -165,7 +165,7 @@ start_watching_files() {
     log DEBUG "Waiting for changes in ${WATCH_FOLDER}."
     inotifywait -e modify -e move -e create -e delete "${WATCH_FOLDER}" 2>&1 | log_lines DEBUG
     log INFO "Found changes in ${WATCH_FOLDER}. Requesting lists refreshing."
-    request_refresh
+    _request_refresh
   done
 }
 
@@ -183,7 +183,7 @@ start_watching_sources() {
   fi
   log INFO "Request the first download."
   NEXT_RUN_TARGET_TIME=$(($(date +%s) + INTERVAL_SECONDS))
-  request_download
+  _request_download
   log INFO "Start watching changes in ${SOURCES_FOLDER}."
   while true; do
     TIMEOUT_ARG=""
@@ -204,7 +204,7 @@ start_watching_sources() {
       log INFO "Running scheduled download."
     fi
     NEXT_RUN_TARGET_TIME=$(($(date +%s) + INTERVAL_SECONDS))
-    request_download
+    _request_download
   done
 }
 
