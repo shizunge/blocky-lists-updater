@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (C) 2024 Shizun Ge
 #
 # This program is free software: you can redistribute it and/or modify

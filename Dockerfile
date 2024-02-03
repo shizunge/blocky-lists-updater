@@ -1,6 +1,6 @@
 FROM joseluisq/static-web-server:2-alpine AS static-web-server
 
-FROM alpine
+FROM alpine:3.19
 
 LABEL org.opencontainers.image.title=blocky-list-updater
 LABEL org.opencontainers.image.description="Download and watch source lists for blocky DNS."
@@ -13,7 +13,7 @@ RUN mkdir -p /web/watch
 RUN mkdir -p /web/downloaded
 RUN mkdir -p /sources
 
-RUN apk add --update --no-cache curl tzdata inotify-tools bash
+RUN apk add --update --no-cache curl tzdata inotify-tools
 
 COPY --from=static-web-server /usr/local/bin/static-web-server /usr/local/bin/
 
