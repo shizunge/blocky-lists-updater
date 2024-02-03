@@ -8,6 +8,12 @@ Update lists without restarting [blocky](https://0xerr0r.github.io/blocky/) DNS.
 
 [Block lists updater](https://github.com/shizunge/blocky-lists-updater) runs as a companion service, allowing you to edit lists and domains in lists without restarting blocky.
 
+## Usage
+
+You can run *lists updater* via Docker, see the [example](./examples) `docker-compose.yml` files.
+
+It is a set of scripts, so you can also run it on the host as well `.src/entrypoint.sh`. It starts a infinite loop and watches the change of *sources*.
+
 ## How it works
 
 * *Lists updater* downloads and concatenates multiple lists into a single file based on a *source* file that contains URLs to tell where to download lists.
@@ -108,9 +114,9 @@ You can configure the most behaviors of *lists updater* via environment variable
 
 ## Caveats
 
-* No web UI
+* Need a third party file editor.
 
-    Blocky lists updater bases on a set of shell scripts. It does not provide any UI to edit lists. You need an additional service for lists editing.
+    Blocky lists updater bases on a set of shell scripts. It does not provide any UI to edit lists. You need an additional service for lists editing. See the [examples](./examples).
 
 * No group management
 
