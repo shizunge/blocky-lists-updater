@@ -1,6 +1,6 @@
 # blocky lists updater
 
-[![Release](https://img.shields.io/github/release/shizunge/blocky-lists-updater.svg?label=Release)](https://github.com/shizunge/gantry/releases/latest)
+[![Release](https://img.shields.io/github/release/shizunge/blocky-lists-updater.svg?label=Release)](https://github.com/shizunge/blocky-lists-updater/releases/latest)
 [![License](https://img.shields.io/badge/License-GPLv3-blue)](https://github.com/shizunge/blocky-lists-updater/blob/main/LICENSE)
 [![Image Size](https://img.shields.io/docker/image-size/shizunge/blocky-lists-updater/latest.svg?label=Image%20Size)](https://hub.docker.com/r/shizunge/blocky-lists-updater)
 [![Docker Pulls](https://img.shields.io/docker/pulls/shizunge/blocky-lists-updater.svg?label=Docker%20Pulls&logo=Docker)](https://hub.docker.com/r/shizunge/blocky-lists-updater)
