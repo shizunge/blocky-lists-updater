@@ -1,6 +1,13 @@
 # blocky lists updater
 
-Update lists without restarting [blocky](https://0xerr0r.github.io/blocky/) DNS.
+[![Release](https://img.shields.io/github/release/shizunge/blocky-lists-updater.svg?label=Release)](https://github.com/shizunge/gantry/releases/latest)
+[![License](https://img.shields.io/badge/License-GPLv3-blue)](https://github.com/shizunge/blocky-lists-updater/blob/main/LICENSE)
+[![Image Size](https://img.shields.io/docker/image-size/shizunge/blocky-lists-updater/latest.svg?label=Image%20Size)](https://hub.docker.com/r/shizunge/blocky-lists-updater)
+[![Docker Pulls](https://img.shields.io/docker/pulls/shizunge/blocky-lists-updater.svg?label=Docker%20Pulls&logo=Docker)](https://hub.docker.com/r/shizunge/blocky-lists-updater)
+[![Build](https://github.com/shizunge/blocky-lists-updater/actions/workflows/on-push.yml/badge.svg?label=Build&branch=main)](https://github.com/shizunge/blocky-lists-updater/actions/workflows/on-push.yml)
+[![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/shizunge/blocky-lists-updater?label=CodeFactor&logo=CodeFactor)](https://www.codefactor.io/repository/github/shizunge/blocky-lists-updater)
+
+[Blocky lists updater](https://github.com/shizunge/blocky-lists-updater) updates lists without restarting [blocky](https://0xerr0r.github.io/blocky/) DNS.
 
 ## Introduction
 
