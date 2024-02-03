@@ -33,8 +33,8 @@ load_libraries() {
   if ! echo "${LOCAL_LOG_LEVEL}" | grep -q -i "NONE"; then
     echo "Loading libraries from ${LIB_DIR}"
   fi
-  . ${LIB_DIR}/lib-common.sh
-  . ${LIB_DIR}/dns-lists-downloader.sh
+  . "${LIB_DIR}/lib-common.sh"
+  . "${LIB_DIR}/dns-lists-downloader.sh"
 }
 
 init_requests() {
