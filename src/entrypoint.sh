@@ -55,18 +55,37 @@ start_web_server() {
   static-web-server --port="${WEB_PORT}" --root="${WEB_FOLDER}" --log-level=warn --compression=false
 }
 
+# Replace newline with '\n'
+_replace_newline() {
+  local STRING="${1}"
+  echo "${STRING}" | sed 's/$/\\n/' | tr -d '\n'
+}
+
 _notify_via_apprise() {
-  local APPRISE_URL="${1}"
+  local URL="${1}"
   local TYPE="${2}"
   local TITLE="${3}"
   local BODY="${4}"
-  [ -z "${APPRISE_URL}" ] && log INFO "Skip notifying via apprise. APPRISE_URL is empty." && return 1
+  if [ -z "${URL}" ]; then
+    log DEBUG "Skip sending notification via Apprise."
+    return 0
+  fi
   # info, success, warning, failure
   if [ "${TYPE}" != "info" ] && [ "${TYPE}" != "success" ] && [ "${TYPE}" != "warning" ] && [ "${TYPE}" != "failure" ]; then
     TYPE="info"
   fi
   [ -z "${BODY}" ] && BODY="${TITLE}"
-  curl -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\", \"type\": \"${TYPE}\"}" "${APPRISE_URL}"
+  TITLE=$(_replace_newline "${TITLE}")
+  BODY=$(_replace_newline "${BODY}")
+  local LOG=
+  if LOG=$(curl --silent --show-error -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\", \"type\": \"${TYPE}\"}" "${URL}" 2>&1); then
+    log INFO "Sent notification via Apprise:"
+    echo "${LOG}" | log_lines INFO
+  else
+    log WARN "Failed to send notification via Apprise:"
+    echo "${LOG}" | log_lines WARN
+  fi
+  return 0
 }
 
 _post_blocky_lists_refresh() {
