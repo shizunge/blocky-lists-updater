@@ -41,7 +41,7 @@ Here is a snippet of a blocky configuration file. We use this as an example to d
 
 ```
 blocking:
-  blackLists:
+  denylists:
     group-one:
       - https://github.com/StevenBlack/hosts
       - https://github.com/Perflyst/PiHoleBlocklist
@@ -69,7 +69,7 @@ Then You modify the blocky configuration file for `group-one` to read the aggreg
 
 ```
 blocking:
-  blackLists:
+  denylists:
     group-one:
       - http://lists-updater:8080/downloaded/group-one.txt
 ```
@@ -93,7 +93,7 @@ Then You modify the blocky configuration file for `group-two` to read this file 
 
 ```
 blocking:
-  blackLists:
+  denylists:
     group-two:
       - http://lists-updater:8080/watch/group-two.txt
 ```

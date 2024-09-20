@@ -2,7 +2,7 @@
 blocking:
   # definition of blacklist groups. Can be external link (http/https) or local file
   # The static-web-server allows multiple blocky instance to access the same set of files.
-  blackLists:
+  denylists:
     # Ask blocky to download lists from the static-web-server of the lists-updater.
     # The watch folder contains user defined lists.
     # The downloaded folder contains aggregate lists for given sources files.
