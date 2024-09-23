@@ -1,4 +1,4 @@
-FROM joseluisq/static-web-server:2-alpine AS static-web-server
+FROM joseluisq/static-web-server:2.33.0 AS static-web-server
 
 FROM alpine:3.20
 
