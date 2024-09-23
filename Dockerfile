@@ -15,7 +15,7 @@ RUN mkdir -p /sources
 
 RUN apk add --update --no-cache curl tzdata inotify-tools
 
-COPY --from=static-web-server /usr/local/bin/static-web-server /usr/local/bin/
+COPY --from=static-web-server /static-web-server /usr/local/bin/
 
 WORKDIR /src
 COPY src/* /src
