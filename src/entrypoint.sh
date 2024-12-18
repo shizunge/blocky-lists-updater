@@ -15,7 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-load_libraries() {
+
+_get_lib_dir() {
   local LOCAL_LOG_LEVEL="${BLU_LOG_LEVEL:-""}"
   local LIB_DIR=
   if [ -n "${BLU_LIB_DIR:-""}" ]; then
@@ -29,10 +30,28 @@ load_libraries() {
   elif [ -r "./entrypoint.sh" ]; then
     LIB_DIR="."
   fi
+  readlink -f "${LIB_DIR}"
+}
+
+_log_load_libraries() {
+  local LOCAL_LOG_LEVEL="${BLU_LOG_LEVEL:-""}"
+  local LIB_DIR="${1}"
   # log function is not available before loading the library.
-  if ! echo "${LOCAL_LOG_LEVEL}" | grep -q -i "NONE"; then
-    echo "[$(date -Iseconds)] Loading libraries from ${LIB_DIR}" >&2
+  local LOADING_MSG="Loading libraries from ${LIB_DIR}"
+  # DEBUG should be the lowest level.
+  if ! echo "${LOCAL_LOG_LEVEL}" | grep -q -i "^DEBUG$"; then
+    return 0
   fi
+  local TIMESTAMP=
+  TIMESTAMP="[$(date -Iseconds)]"
+  local LEVEL="[DEBUG]"
+  echo "${TIMESTAMP}${LEVEL} ${LOADING_MSG}" >&2
+}
+
+load_libraries() {
+  local LIB_DIR=
+  LIB_DIR=$(_get_lib_dir)
+  _log_load_libraries "${LIB_DIR}"
   . "${LIB_DIR}/lib-common.sh"
   . "${LIB_DIR}/dns-lists-downloader.sh"
 }
