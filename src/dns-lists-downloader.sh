@@ -24,17 +24,6 @@ _file_size() {
   du -h "${1}" | cut -f1
 }
 
-_fix_list() {
-  # fix "0.0.0.0abc.com" -> "0.0.0.0 abc.com"
-  sed -i 's/^0\.0\.0\.0\([^ ].*\)/0.0.0.0 \1/' "${1}"
-  # fix "0 abc.com" -> "0.0.0.0 abc.com"
-  sed -i 's/^0 \(.*\)/0.0.0.0 \1/' "${1}"
-  # fix "||abc.com^" -> "0.0.0.0 abc.com"
-  sed -i 's/^||\(.*\)^$/0.0.0.0 \1/' "${1}"
-  # fix "!comments" -> "# !comments"
-  sed -i 's/^\(!.*\)$/# \1/' "${1}"
-}
-
 _download_from_single_source_file() {
   local SOURCE_FILE="${1}"
   local DESTINATION_FOLDER="${2}"
@@ -100,7 +89,6 @@ _download_from_single_source_file() {
       ACCUMULATED_ERRORS=$((ACCUMULATED_ERRORS + 1))
       continue
     fi
-    _fix_list "${CURRENT_FILE}"
     eval_cmd "post-download" "${POST_DOWNLOAD_CMD} ${CURRENT_FILE}"
     log DEBUG "Merging ${CURRENT_FILE} to ${ACCUMULATOR_FILE}"
     # SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects.
