@@ -28,6 +28,7 @@ _download_from_single_source_file() {
   local SOURCE_FILE="${1}"
   local DESTINATION_FOLDER="${2}"
   local POST_DOWNLOAD_CMD="${3}"
+  local POST_MERGING_CMD="${4}"
   [ -z "${SOURCE_FILE}" ] && log ERROR "SOURCE_FILE is empty." && return 1
   [ -z "${DESTINATION_FOLDER}" ] && log ERROR "DESTINATION_FOLDER is empty." && return 1
   local DESTINATION_FILE=
@@ -45,6 +46,7 @@ _download_from_single_source_file() {
   local ACCUMULATED_ERRORS=0
   _rm_check "${ACCUMULATOR_FILE}"
   touch "${ACCUMULATOR_FILE}"
+  local SOURCE_LINE
   # pipeline causes subshell
   # ( cat "${SOURCE_FILE}"; echo; ) | while read -r S; do
   while read -r SOURCE_LINE; do
@@ -80,6 +82,7 @@ _download_from_single_source_file() {
       if [ ${RETRIES} -ge ${RETRY_MAX} ]; then
         break;
       fi
+      CURRENT_ERROR=0
       RETRIES=$((RETRIES + 1))
       sleep ${RETRY_WAIT_SECOND}
     done
@@ -89,7 +92,9 @@ _download_from_single_source_file() {
       ACCUMULATED_ERRORS=$((ACCUMULATED_ERRORS + 1))
       continue
     fi
-    eval_cmd "post-download" "${POST_DOWNLOAD_CMD} ${CURRENT_FILE}"
+    if [ -n "${POST_DOWNLOAD_CMD}" ]; then
+      eval_cmd "post-download" "${POST_DOWNLOAD_CMD} ${CURRENT_FILE}"
+    fi
     log DEBUG "Merging ${CURRENT_FILE} to ${ACCUMULATOR_FILE}"
     # SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects.
     # shellcheck disable=SC2129
@@ -104,15 +109,20 @@ _download_from_single_source_file() {
   DST_PATH="${DESTINATION_FOLDER}/${DESTINATION_FILE}"
   mv "${ACCUMULATOR_FILE}" "${DST_PATH}"
   _rm_check "${TEMP_DIR}"
+  if [ -n "${POST_MERGING_CMD}" ]; then
+    eval_cmd "post-merging" "${POST_MERGING_CMD} ${DST_PATH}"
+  fi
   log INFO "=============================="
   log INFO "=== Download done for ${DESTINATION_FILE}. Size is $(_file_size "${DST_PATH}")."
-  return ${ACCUMULATED_ERRORS}
+  # Do not return ACCUMULATED_ERRORS in case it is larger than 255.
+  test "${ACCUMULATED_ERRORS}" -eq 0
 }
 
 download_lists() {
   local SOURCES_FOLDER="${1}"
   local DESTINATION_FOLDER="${2}"
   local POST_DOWNLOAD_CMD="${3}"
+  local POST_MERGING_CMD="${4}"
   if [ -z "${SOURCES_FOLDER}" ]; then
     log ERROR "SOURCES_FOLDER is empty."
     return 1
@@ -137,8 +147,9 @@ download_lists() {
   local ACCUMULATED_ERRORS=0
   SOURCE_FILE_LIST=$(find "${SOURCES_FOLDER}" -type f | sort)
   for SOURCE_FILE in ${SOURCE_FILE_LIST}; do
-    _download_from_single_source_file "${SOURCE_FILE}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}"
-    ACCUMULATED_ERRORS=$((ACCUMULATED_ERRORS + $?))
+    if ! _download_from_single_source_file "${SOURCE_FILE}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" "${POST_MERGING_CMD}"; then
+      ACCUMULATED_ERRORS=$((ACCUMULATED_ERRORS + 1))
+    fi
   done
   local DIR_SIZE=
   local TIME_ELAPSED=

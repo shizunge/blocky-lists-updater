@@ -167,6 +167,7 @@ start_download_service() {
   local SOURCES_FOLDER="${1}"
   local DESTINATION_FOLDER="${2}"
   local POST_DOWNLOAD_CMD="${3}"
+  local POST_MERGING_CMD="${4}"
   [ -z "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_DOWNLOAD_FILE is empty" && return 1
   [ -z "${SOURCES_FOLDER}" ] && log INFO "Skip download service. SOURCES_FOLDER is empty." && return 1
   local LAST_FILE_TIME=
@@ -175,7 +176,7 @@ start_download_service() {
     log DEBUG "Waiting for the next download request."
     inotifywait -e modify -e move -e create -e delete "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" 2>&1 | log_lines DEBUG
     LAST_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}")
-    download_lists "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}"
+    download_lists "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" "${POST_MERGING_CMD}"
     log INFO "Downloading done. Requesting lists refreshing."
     _request_refresh
     CURRENT_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}")
@@ -251,7 +252,7 @@ main() {
   NODE_NAME="${BLU_NODE_NAME:-${NODE_NAME}}"
   export LOG_LEVEL NODE_NAME
   local BLOCKY_URL DESTINATION_FOLDER INITIAL_DELAY_SECONDS INTERVAL_SECONDS APPRISE_URL
-  local SOURCES_FOLDER POST_DOWNLOAD_CMD WATCH_FOLDER WEB_FOLDER WEB_PORT
+  local SOURCES_FOLDER POST_DOWNLOAD_CMD POST_MERGING_CMD WATCH_FOLDER WEB_FOLDER WEB_PORT
   BLOCKY_URL=$(read_env "BLU_BLOCKY_URL" "")
   DESTINATION_FOLDER=$(read_env "BLU_DESTINATION_FOLDER" "/web/downloaded")
   INITIAL_DELAY_SECONDS=$(read_env "BLU_INITIAL_DELAY_SECONDS" 0)
@@ -259,6 +260,7 @@ main() {
   APPRISE_URL=$(read_env "BLU_NOTIFICATION_APPRISE_URL" "")
   SOURCES_FOLDER=$(read_env "BLU_SOURCES_FOLDER" "/sources")
   POST_DOWNLOAD_CMD=$(read_env "BLU_POST_DOWNLOAD_CMD" "")
+  POST_MERGING_CMD=$(read_env "BLU_POST_MERGING_CMD" "")
   WATCH_FOLDER=$(read_env "BLU_WATCH_FOLDER" "/web/watch")
   WEB_FOLDER=$(read_env "BLU_WEB_FOLDER" "/web")
   WEB_PORT=$(read_env "BLU_WEB_PORT" 8080)
@@ -277,6 +279,7 @@ main() {
   log DEBUG "APPRISE_URL=${APPRISE_URL}"
   log DEBUG "SOURCES_FOLDER=${SOURCES_FOLDER}"
   log DEBUG "POST_DOWNLOAD_CMD=${POST_DOWNLOAD_CMD}"
+  log DEBUG "POST_MERGING_CMD=${POST_MERGING_CMD}"
   log DEBUG "WATCH_FOLDER=${WATCH_FOLDER}"
   log DEBUG "WEB_FOLDER=${WEB_FOLDER}"
   log DEBUG "WEB_PORT=${WEB_PORT}"
@@ -286,7 +289,7 @@ main() {
   sleep 1
   start_refresh_service "${BLOCKY_URL}" "${APPRISE_URL}" &
   sleep 1
-  start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" &
+  start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" "${POST_MERGING_CMD}" &
   sleep 1
   start_watching_files "${WATCH_FOLDER}" &
   sleep 1

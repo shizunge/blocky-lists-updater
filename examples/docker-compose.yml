@@ -21,8 +21,10 @@ services:
       - "BLU_INITIAL_DELAY_SECONDS=120"
       # Set BLU_INTERVAL_SECONDS to 0 to run the lists updater only once then exit.
       - "BLU_INTERVAL_SECONDS=86400"
-      # A command or function running after downloading a list. The first argument will be the path to the downloaded file, i.e. your command will be `eval` as `your_command <file_path>`.
+      # A command running after downloading a list. The first argument will be the path to the downloaded file, i.e. your command will be `eval` as `your_command <file_path>`.
       - "BLU_POST_DOWNLOAD_CMD=source /scripts/post-dl-fix.sh"
+      # A command running after merging lists to a single file. The first argument will be the path to the merged file, i.e. your command will be `eval` as `your_command <file_path>`.
+      - "BLU_POST_MERGING_CMD=source /scripts/post-merging.sh"
       # Blocky won't read the sources files. It reads the downloaded files in the destination folder.
       - "BLU_SOURCES_FOLDER=/sources"
       # Use an empty BLU_WATCH_FOLDER to disable watching lists of domains.
@@ -36,6 +38,7 @@ services:
       - ./lists/sources/sources:ro
       - ./lists/watch:/web/watch:ro
       - ./post-dl-fix.sh:/scripts/post-dl-fix.sh:ro
+      - ./post-merging.sh:/scripts/post-merging.sh:ro
       - bld-downloaded:/web/downloaded
 
   blocky_app:

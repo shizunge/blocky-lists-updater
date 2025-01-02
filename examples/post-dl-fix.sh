@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# The first argument will be the path to the downloaded file.
 myfunc() {
   # fix "0.0.0.0abc.com" -> "0.0.0.0 abc.com"
   sed -i 's/^0\.0\.0\.0\([^ ].*\)/0.0.0.0 \1/' "${1}";
