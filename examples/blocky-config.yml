@@ -14,7 +14,7 @@ blocking:
       - http://lists-updater:8080/downloaded/list-one.txt
     group-two:
       - http://lists-updater:8080/downloaded/list-two.txt
-  whiteLists:
+  allowlists:
     my-lists:
       - http://lists-donwloader:8080/watch/allowed-list.txt
   clientGroupsBlock:
