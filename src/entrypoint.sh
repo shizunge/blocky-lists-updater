@@ -284,18 +284,25 @@ main() {
   log DEBUG "WEB_FOLDER=${WEB_FOLDER}"
   log DEBUG "WEB_PORT=${WEB_PORT}"
 
+  local PIDS=
   init_requests
   start_web_server "${WEB_FOLDER}" "${WEB_PORT}" &
+  PIDS="${!} ${PIDS}"
   sleep 1
   start_refresh_service "${BLOCKY_URL}" "${APPRISE_URL}" &
+  PIDS="${!} ${PIDS}"
   sleep 1
   start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" "${POST_MERGING_CMD}" &
+  PIDS="${!} ${PIDS}"
   sleep 1
   start_watching_files "${WATCH_FOLDER}" &
+  PIDS="${!} ${PIDS}"
   sleep 1
-  if ! start_watching_sources "${SOURCES_FOLDER}" "${INTERVAL_SECONDS}" "${INITIAL_DELAY_SECONDS}"; then
-    while true; do sleep 86400; done
-  fi
+  start_watching_sources "${SOURCES_FOLDER}" "${INTERVAL_SECONDS}" "${INITIAL_DELAY_SECONDS}" &
+  PIDS="${!} ${PIDS}"
+  # SC2086 (info): Double quote to prevent globbing and word splitting.
+  # shellcheck disable=SC2086
+  wait ${PIDS}
 }
 
 trap "log INFO \"Exit.\"; exit;" HUP INT TERM
