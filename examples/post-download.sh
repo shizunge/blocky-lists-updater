@@ -21,7 +21,7 @@ myfunc() {
   sed -i -E 's/^0\.0\.0\.0([^ ].*)$/\1/' "${1}";
   # fix "0 abc.com" -> "abc.com"
   sed -i -E 's/^0 (.*)$/\1/' "${1}";
-  
+
   # Wild cards:
   # fix ".abc.com" -> "*.abc.com"
   sed -i -E 's/^\.(.*)$/*.\1/' "${1}";
