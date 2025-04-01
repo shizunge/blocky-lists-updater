@@ -13,7 +13,8 @@ RUN mkdir -p /web/watch
 RUN mkdir -p /web/downloaded
 RUN mkdir -p /sources
 
-RUN apk add --update --no-cache curl tzdata inotify-tools
+# Add sed and gawk because they are faster than the busybox ones.
+RUN apk add --update --no-cache curl tzdata inotify-tools sed gawk
 
 COPY --from=static-web-server /static-web-server /usr/local/bin/
 
