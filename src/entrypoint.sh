@@ -57,13 +57,20 @@ load_libraries() {
 }
 
 init_requests() {
+  local INITIAL_DELAY_SECONDS="${1:-0}"
   local NOTIFY_BASE=
   NOTIFY_BASE=$(mktemp -d)
   STATIC_VAR_REQUEST_REFRESH_FILE="${NOTIFY_BASE}/request-refresh"
   STATIC_VAR_REQUEST_DOWNLOAD_FILE="${NOTIFY_BASE}/request-download"
+  STATIC_VAR_INITIAL_DELAY_FILE="${NOTIFY_BASE}/initial_delay"
   date +%s > "${STATIC_VAR_REQUEST_REFRESH_FILE}"
   date +%s > "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}"
-  export STATIC_VAR_REQUEST_REFRESH_FILE STATIC_VAR_REQUEST_DOWNLOAD_FILE
+  if [ "${INITIAL_DELAY_SECONDS}" -gt 0 ]; then
+    local CURRENT_TIME
+    CURRENT_TIME=$(date +%s)
+    echo $(( CURRENT_TIME + INITIAL_DELAY_SECONDS )) > "${STATIC_VAR_INITIAL_DELAY_FILE}"
+  fi
+  export STATIC_VAR_REQUEST_REFRESH_FILE STATIC_VAR_REQUEST_DOWNLOAD_FILE STATIC_VAR_INITIAL_DELAY_FILE
 }
 
 start_web_server() {
@@ -159,6 +166,17 @@ start_refresh_service() {
 
 _request_refresh() {
   [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
+  [ -z "${STATIC_VAR_INITIAL_DELAY_FILE}" ] && log ERROR "STATIC_VAR_INITIAL_DELAY_FILE is empty" && return 1
+  if [ -f "${STATIC_VAR_INITIAL_DELAY_FILE}" ]; then
+    local TARGET
+    TARGET=$(cat "${STATIC_VAR_INITIAL_DELAY_FILE}")
+    local SLEEP_SECONDS=$((TARGET - $(date +%s)))
+    if [ "${SLEEP_SECONDS}" -gt 0 ]; then
+      log INFO "Sleep ${SLEEP_SECONDS} seconds before sending the first refresh request."
+      sleep "${SLEEP_SECONDS}"
+    fi
+    rm "${STATIC_VAR_INITIAL_DELAY_FILE}"
+  fi
   date +%s > "${STATIC_VAR_REQUEST_REFRESH_FILE}"
 }
 
@@ -212,14 +230,9 @@ start_watching_sources() {
   export LOG_SCOPE="watch_sources"
   local SOURCES_FOLDER="${1}"
   local INTERVAL_SECONDS="${2:-0}"
-  local INITIAL_DELAY_SECONDS="${3:-0}"
   [ -z "${SOURCES_FOLDER}" ] && log INFO "Skip watching sources. SOURCES_FOLDER is empty." && return 1
   local NEXT_RUN_TARGET_TIME TIMEOUT_ARG TIMEOUT_SEC
   local LOG=
-  if [ "${INITIAL_DELAY_SECONDS}" -gt 0 ]; then
-    log INFO "Wait ${INITIAL_DELAY_SECONDS} seconds before the first download."
-    sleep "${INITIAL_DELAY_SECONDS}"
-  fi
   log INFO "Request the first download."
   NEXT_RUN_TARGET_TIME=$(($(date +%s) + INTERVAL_SECONDS))
   _request_download
@@ -285,7 +298,7 @@ main() {
   log DEBUG "WEB_PORT=${WEB_PORT}"
 
   local PIDS=
-  init_requests
+  init_requests "${INITIAL_DELAY_SECONDS}"
   start_web_server "${WEB_FOLDER}" "${WEB_PORT}" &
   PIDS="${!} ${PIDS}"
   sleep 1
@@ -298,7 +311,7 @@ main() {
   start_watching_files "${WATCH_FOLDER}" &
   PIDS="${!} ${PIDS}"
   sleep 1
-  start_watching_sources "${SOURCES_FOLDER}" "${INTERVAL_SECONDS}" "${INITIAL_DELAY_SECONDS}" &
+  start_watching_sources "${SOURCES_FOLDER}" "${INTERVAL_SECONDS}" &
   PIDS="${!} ${PIDS}"
   # SC2086 (info): Double quote to prevent globbing and word splitting.
   # shellcheck disable=SC2086
