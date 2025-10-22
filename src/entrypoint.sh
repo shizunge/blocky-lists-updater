@@ -34,7 +34,8 @@ _get_lib_dir() {
 }
 
 _log_load_libraries() {
-  local LOCAL_LOG_LEVEL="${BLU_LOG_LEVEL:-""}"
+  local LOCAL_LOG_FORMAT="${BLU_LOG_FORMAT:-${LOG_FORMAT}}"
+  local LOCAL_LOG_LEVEL="${BLU_LOG_LEVEL:-${LOG_LEVEL}}"
   local LIB_DIR="${1}"
   # log function is not available before loading the library.
   local LOADING_MSG="Loading libraries from ${LIB_DIR}"
@@ -43,9 +44,14 @@ _log_load_libraries() {
     return 0
   fi
   local TIMESTAMP=
-  TIMESTAMP="[$(date -Iseconds)]"
-  local LEVEL="[DEBUG]"
-  echo "${TIMESTAMP}${LEVEL} ${LOADING_MSG}" >&2
+  TIMESTAMP="$(date -Iseconds)"
+  local LEVEL="DEBUG"
+  local MSG_LINE=
+  case "${LOCAL_LOG_FORMAT}" in
+    "json") MSG_LINE="{\"level\":\"${LEVEL}\",\"msg\":\"${LOADING_MSG}\",\"time\":\"${TIMESTAMP}\"}" ;;
+    *) MSG_LINE="[${TIMESTAMP}][${LEVEL}] ${LOADING_MSG}" ;;
+  esac
+  echo -e "${MSG_LINE}" >&2
 }
 
 load_libraries() {
@@ -261,9 +267,10 @@ start_watching_sources() {
 }
 
 main() {
+  LOG_FORMAT="${BLU_LOG_FORMAT:-${LOG_FORMAT}}"
   LOG_LEVEL="${BLU_LOG_LEVEL:-${LOG_LEVEL}}"
   NODE_NAME="${BLU_NODE_NAME:-${NODE_NAME}}"
-  export LOG_LEVEL NODE_NAME
+  export LOG_FORMAT LOG_LEVEL NODE_NAME
   local BLOCKY_URL DESTINATION_FOLDER INITIAL_DELAY_SECONDS INTERVAL_SECONDS APPRISE_URL
   local SOURCES_FOLDER POST_DOWNLOAD_CMD POST_MERGING_CMD WATCH_FOLDER WEB_FOLDER WEB_PORT
   BLOCKY_URL=$(read_env "BLU_BLOCKY_URL" "")
