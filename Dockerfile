@@ -1,6 +1,6 @@
 FROM joseluisq/static-web-server:2.40.1 AS static-web-server
 
-FROM alpine:3.23.2
+FROM alpine:3.23.3
 
 LABEL org.opencontainers.image.title=blocky-list-updater
 LABEL org.opencontainers.image.description="Download and watch source lists for blocky DNS."
