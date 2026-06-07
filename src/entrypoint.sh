@@ -87,10 +87,16 @@ start_web_server() {
   static-web-server --port="${WEB_PORT}" --root="${WEB_FOLDER}" --log-level=warn --compression=false
 }
 
+# Replace '\' with '\\'
+# Replace '"' with '\"'
 # Replace newline with '\n'
-_replace_newline() {
+_sanitize_apprise_string() {
   local STRING="${1}"
-  echo "${STRING}" | sed 's/$/\\n/' | tr -d '\n'
+  echo "${STRING}"\
+    | sed -E 's/\\/\\\\/g'\
+    | sed -E 's/"/\\"/g'\
+    | sed -E 's/$/\\n/'\
+    | tr -d '\n'
 }
 
 _notify_via_apprise() {
@@ -107,8 +113,8 @@ _notify_via_apprise() {
     TYPE="info"
   fi
   [ -z "${BODY}" ] && BODY="${TITLE}"
-  TITLE=$(_replace_newline "${TITLE}")
-  BODY=$(_replace_newline "${BODY}")
+  TITLE=$(_sanitize_apprise_string "${TITLE}")
+  BODY=$(_sanitize_apprise_string "${BODY}")
   local LOG=
   if LOG=$(curl --silent --show-error -X POST -H "Content-Type: application/json" --data "{\"title\": \"${TITLE}\", \"body\": \"${BODY}\", \"type\": \"${TYPE}\"}" "${URL}" 2>&1); then
     log INFO "Sent notification via Apprise:"
