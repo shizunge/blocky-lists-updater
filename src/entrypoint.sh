@@ -92,12 +92,7 @@ start_web_server() {
 # Replace newline with '\n'
 _sanitize_apprise_string() {
   local STRING="${1}"
-  echo "${STRING}"\
-    | sed -E 's/\\/\\\\/g'\
-    | sed -E 's/"/\\"/g'\
-    | sed -E 's/\r/\\r/g'\
-    | sed -E 's/$/\\n/'\
-    | tr -d '\n'
+  echo "${STRING}" | sanitize_json_string
 }
 
 _notify_via_apprise() {
@@ -140,11 +135,11 @@ _post_blocky_lists_refresh() {
   log INFO "Sending a request to blocky to refresh lists."
   START_TIME=$(date +%s)
   if LOG=$(curl -X POST --show-error --silent --head "${BLOCKY_URL}${API}" 2>&1); then
-    echo "${LOG}" | log_lines INFO
+    log INFO "${LOG}"
     NOTIFICATION_TYPE="success"
     NOTIFICATION_TITLE="Blocky lists refresh succeeded"
   else
-    echo "${LOG}" | log_lines ERROR
+    log ERROR "${LOG}"
     NOTIFICATION_TYPE="failure"
     NOTIFICATION_TITLE="Error during blocky lists refresh"
   fi
