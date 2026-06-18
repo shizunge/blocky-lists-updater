@@ -95,6 +95,7 @@ _sanitize_apprise_string() {
   echo "${STRING}"\
     | sed -E 's/\\/\\\\/g'\
     | sed -E 's/"/\\"/g'\
+    | sed -E 's/\r/\\r/g'\
     | sed -E 's/$/\\n/'\
     | tr -d '\n'
 }

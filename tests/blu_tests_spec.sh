@@ -15,12 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-export TOTAL_EMAIL_COUNT_IS_ONE="\"total\": *1,"
-export SEND_NOTIFY_APPRISE="Sent notification via Apprise"
-export SKIP_NOTIFY_APPRISE="Skip sending notification via Apprise"
-export NO_UPDATES_OR_ERRORS_FOR_NOTIFICATION="There are no updates or errors for notification."
-export SKIP_SENDING_NOTIFICATION="Skip sending notification."
-
 UINQUE_ID="$(unique_id)"
 export SERVICE_NAME_APPRISE="blu-test-${UINQUE_ID}-apprise"
 export SERVICE_NAME_MAILPIT="blu-test-${UINQUE_ID}-mailpit"
@@ -92,7 +86,7 @@ _start_blocky_lists_updater() {
     -e "BLU_BLOCKY_URL=http://localhost:${BLOCKY_PORT}" \
     -e "BLU_DESTINATION_FOLDER=/web/downloaded" \
     -e "BLU_INITIAL_DELAY_SECONDS=5" \
-    -e "BLU_INTERVAL_SECONDS=86400" \
+    -e "BLU_INTERVAL_SECONDS=${BLU_INTERVAL_SECONDS}" \
     -e "BLU_NOTIFICATION_APPRISE_URL=http://localhost:${APPRISE_PORT}/notify" \
     -e "BLU_POST_DOWNLOAD_CMD=echo post-download" \
     -e "BLU_POST_MERGING_CMD=echo post-merging" \
@@ -184,9 +178,8 @@ teardown() {
 }
 
 Describe 'blu_test'
-  Describe "test_notify_apprise"
-    TEST_NAME="test_notify_apprise"
-    test_notify_apprise() {
+  Describe "test_trigger_and_notify_apprise"
+    test_trigger_and_notify_apprise() {
       local RETURN_VALUE=0
       local BLU_IMAGE="blu_dut"
       local DIR WEB_DIR SOURCES_DIR WATCH_DIR
@@ -207,6 +200,7 @@ Describe 'blu_test'
       _start_apprise 2>&1
       _start_mailpit 2>&1
       _start_file_server "${WEB_DIR}" 2>&1
+      export BLU_INTERVAL_SECONDS=86400
       _start_blocky_lists_updater "${BLU_IMAGE}" "${SOURCES_DIR}" "${WATCH_DIR}" 2>&1
       _start_blocky 2>&1
       sleep 10
@@ -241,15 +235,25 @@ Describe 'blu_test'
       # Check domains blocked correctly.
       _print_dut_logs 2>&1
       _print_and_cleanup_emails 2>&1
-      _print_containers_logs 2>&1
+      # _print_containers_logs 1>&2
       rm -r "${DIR}"
       return "${RETURN_VALUE}"
     }
     AfterEach "teardown"
     It 'run_test'
-      When run test_notify_apprise "${TEST_NAME}"
+      When run test_trigger_and_notify_apprise
       The status should be success
       The stdout should satisfy display_output
+      The stdout should satisfy spec_expect_message    "Found changes in /sources. Requesting lists downloading."
+      The stdout should satisfy spec_expect_message    "post-download .*sources.txt-current.txt"
+      The stdout should satisfy spec_expect_message    "post-merging /web/downloaded/sources.txt"
+      The stdout should satisfy spec_expect_message    "Sending a request to blocky to refresh lists"
+      The stdout should satisfy spec_expect_message    "Downloading done. Requesting lists refreshing"
+      The stdout should satisfy spec_expect_message    "Found changes in /web/watch. Requesting lists refreshing."
+      The stdout should satisfy spec_expect_message    "Sent notification via Apprise"
+      The stdout should satisfy spec_expect_no_message "Invalid JSON Payload provided"
+      The stdout should satisfy spec_expect_message    "Subject\":\"Blocky lists refresh succeeded"
+      The stdout should satisfy spec_expect_message    "Snippet\":\"HTTP/1.1 200 OK"
       The stderr should satisfy display_output
     End
   End

@@ -49,6 +49,13 @@ display_output() {
   echo "${display_output:-""}"
 }
 
+_handle_failure() {
+  local MESSAGE="${1}"
+  local RED='\033[0;31m'
+  local NO_COLOR='\033[0m'
+  echo -e "${RED}ERROR${NO_COLOR} ${MESSAGE}"
+}
+
 _expect_multiple_messages() {
   TEXT="${1}"
   MESSAGE="${2}"
