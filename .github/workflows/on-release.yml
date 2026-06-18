@@ -24,11 +24,36 @@ jobs:
           shellcheck src/*.sh
           set +e
 
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.1.0
+      - name: Install shellspec
+        run: |
+          mkdir -p ~/shellspec
+          cd ~/shellspec
+          git clone https://github.com/shellspec/shellspec.git
+          ln -s ~/shellspec/shellspec/shellspec /usr/local/bin/shellspec
+          echo -n "shellspec version: "
+          shellspec --version
+      - name: Install libraries
+        run: |
+          sudo apt install -y inotify-tools
+      - name: Checkout Code
+        uses: actions/checkout@v6
+      - name: Run tests
+        run: |
+          NUM_JOBS=$(ls -1 tests | wc -l)
+          shellspec -s bash --jobs "${NUM_JOBS}"
+
   build_and_push:
     name: Build and push Docker image
     runs-on: ubuntu-latest
     needs:
       - shellcheck
+      - test
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6

@@ -1,0 +1,60 @@
+# Example configuration file of blocky DNS for the lists updater (https://github.com/shizunge/blocky-lists-updater)
+blocking:
+  # definition of blacklist groups. Can be external link (http/https) or local file
+  # The static-web-server allows multiple blocky instance to access the same set of files.
+  denylists:
+    # Ask blocky to download lists from the static-web-server of the lists-updater.
+    # The watch folder contains user defined lists.
+    # The downloaded folder contains aggregate lists for given sources files.
+    lists:
+      - http://127.0.0.1:8080/downloaded/sources.txt
+  allowlists:
+    # Note: if the same group has both allow/denylists, allowlists take precedence. Meaning if a domain is both blocked and allowed, it will be allowed.
+    # If a group has only allowlist entries, only domains from this list are allowed, and all others be blocked.
+    lists:
+      - http://127.0.0.1:8080/watch/watch.txt
+  clientGroupsBlock:
+    # default will be used, if no special definition for a client name exists
+    default:
+      - lists
+  blockType: zeroIp
+  blockTTL: 1h
+  loading:
+    # Disable build-in refreshing, only listens to lists updater refreshing requests.
+    refreshPeriod: 0
+    downloads:
+      timeout: 10m
+      attempts: 60
+      cooldown: 10s
+    concurrency: 4
+    strategy: fast
+    # Forgive the errors in the aggregate lists. The aggregate one also contains all errors from all of lists.
+    maxErrorsPerSource: 1
+
+upstreams:
+  groups:
+    default:
+      - 1.1.1.1
+  strategy: parallel_best
+  timeout: 5s
+  init:
+    strategy: failOnError
+
+connectIPVersion: dual
+
+bootstrapDns:
+  - tcp+udp:1.1.1.1
+
+caching:
+  minTime: 1m
+  maxTime: 0m
+  maxItemsCount: 0
+  prefetching: true
+  prefetchExpires: 2h
+  prefetchThreshold: 5
+  prefetchMaxItemsCount: 0
+  cacheTimeNegative: 30s
+
+ports:
+  dns: 8053
+  http: 4000
