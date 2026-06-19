@@ -85,7 +85,7 @@ _start_blocky_lists_updater() {
     -e "BLU_LOG_LEVEL=DEBUG" \
     -e "BLU_BLOCKY_URL=http://localhost:${BLOCKY_PORT}" \
     -e "BLU_DESTINATION_FOLDER=/web/downloaded" \
-    -e "BLU_INITIAL_DELAY_SECONDS=5" \
+    -e "BLU_INITIAL_DELAY_SECONDS=0" \
     -e "BLU_INTERVAL_SECONDS=${BLU_INTERVAL_SECONDS}" \
     -e "BLU_NOTIFICATION_APPRISE_URL=http://localhost:${APPRISE_PORT}/notify" \
     -e "BLU_POST_DOWNLOAD_CMD=echo post-download" \
@@ -110,6 +110,21 @@ _start_blocky() {
     --volume "$(pwd)/tests/blocky-config.yml:/app/config.yml:ro" \
     "${IMAGE}"
 }
+
+_setup_containers() {
+  local WEB_DIR="${1}"
+  local SOURCES_DIR="${2}"
+  local WATCH_DIR="${3}"
+  local BLU_IMAGE="blu_dut"
+  _build_blocky_lists_updater "${BLU_IMAGE}" 2>&1
+  _start_apprise 2>&1
+  _start_mailpit 2>&1
+  _start_file_server "${WEB_DIR}" 2>&1
+  _start_blocky_lists_updater "${BLU_IMAGE}" "${SOURCES_DIR}" "${WATCH_DIR}" 2>&1
+  _start_blocky 2>&1
+  sleep 10
+}
+
 
 _print_and_cleanup_emails() {
   local API_URL="localhost:${EMAIL_API_PORT}/api/v1"
@@ -159,20 +174,20 @@ _wait_for_dns_change() {
   local MAX_TIMEOUT="${3:-60}"
   local TIMEOUT=0
   local IP="${OLD_IP}"
-  IP=$(dig +short @localhost -p "${DNS_PORT}" "${DOMAIN}")
+  IP=$(dig +short @localhost -p "${DNS_PORT}" "${DOMAIN}") || IP="${OLD_IP}"
   while [ "${IP}" = "${OLD_IP}" ]; do
-    sleep 1
-    IP=$(dig +short @localhost -p "${DNS_PORT}" "${DOMAIN}")
-    TIMEOUT=$((TIMEOUT + 1))
     if [ "${TIMEOUT}" -ge "${MAX_TIMEOUT}" ]; then
       echo "${OLD_IP}"
       return 1
     fi
+    TIMEOUT=$((TIMEOUT + 1))
+    sleep 1
+    IP=$(dig +short @localhost -p "${DNS_PORT}" "${DOMAIN}") || IP="${OLD_IP}"
   done
   echo "${IP}"
 }
 
-teardown() {
+_teardown() {
   _stop_dut >/dev/null 2>&1
   _stop_containers >/dev/null 2>&1
 }
@@ -180,8 +195,9 @@ teardown() {
 Describe 'blu_test'
   Describe "test_trigger_and_notify_apprise"
     test_trigger_and_notify_apprise() {
+      echo "=============================="
+      echo "Starting test_trigger_and_notify_apprise"
       local RETURN_VALUE=0
-      local BLU_IMAGE="blu_dut"
       local DIR WEB_DIR SOURCES_DIR WATCH_DIR
       DIR=$(mktemp -d) || return 1
       WEB_DIR=$(mkdir "${DIR}/web" && echo "${DIR}/web") || return 1
@@ -195,22 +211,17 @@ Describe 'blu_test'
       echo "LIST_FILE=${LIST_FILE}"
       echo "SOURCES_FILE=${SOURCES_FILE}"
       echo "WATCH_FILE=${WATCH_FILE}"
-      echo "google.com" > "${LIST_FILE}"
-      _build_blocky_lists_updater "${BLU_IMAGE}" 2>&1
-      _start_apprise 2>&1
-      _start_mailpit 2>&1
-      _start_file_server "${WEB_DIR}" 2>&1
-      export BLU_INTERVAL_SECONDS=86400
-      _start_blocky_lists_updater "${BLU_IMAGE}" "${SOURCES_DIR}" "${WATCH_DIR}" 2>&1
-      _start_blocky 2>&1
-      sleep 10
       # Update the file list.
       local DOMAIN="google.com"
       local IP="0.0.0.0"
+      echo "${DOMAIN}" > "${LIST_FILE}"
+      export BLU_INTERVAL_SECONDS=86400
+      _setup_containers "${WEB_DIR}" "${SOURCES_DIR}" "${WATCH_DIR}"
       echo ""
       echo "At beginning, Blocky should resolve ${DOMAIN}."
       if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
         echo "${DOMAIN} is not resolved initially."
+        _print_dut_logs 2>&1
         return 1
       fi
       echo "${DOMAIN} is resolved to ${IP}."
@@ -219,6 +230,7 @@ Describe 'blu_test'
       echo "Now Blocky should block ${DOMAIN}."
       if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
         echo "${DOMAIN} is still resolved. Want ${DOMAIN} to be blocked."
+        _print_dut_logs 2>&1
         return 1
       fi
       echo "${DOMAIN} is resolved to ${IP}."
@@ -227,29 +239,104 @@ Describe 'blu_test'
       echo "Now Blocky should resolve ${DOMAIN} again."
       if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
         echo "${DOMAIN} is not resolved. Want ${DOMAIN} to be resolved."
+        _print_dut_logs 2>&1
         return 1
       fi
       echo "${DOMAIN} is resolved to ${IP}."
-      # Check domains blocked correctly.
-      # Update the domain list.
-      # Check domains blocked correctly.
       _print_dut_logs 2>&1
       _print_and_cleanup_emails 2>&1
       # _print_containers_logs 1>&2
       rm -r "${DIR}"
       return "${RETURN_VALUE}"
     }
-    AfterEach "teardown"
+    AfterEach "_teardown"
     It 'run_test'
       When run test_trigger_and_notify_apprise
       The status should be success
       The stdout should satisfy display_output
       The stdout should satisfy spec_expect_message    "Found changes in /sources. Requesting lists downloading."
+      The stdout should satisfy spec_expect_no_message "Running scheduled download."
       The stdout should satisfy spec_expect_message    "post-download .*sources.txt-current.txt"
       The stdout should satisfy spec_expect_message    "post-merging /web/downloaded/sources.txt"
-      The stdout should satisfy spec_expect_message    "Sending a request to blocky to refresh lists"
       The stdout should satisfy spec_expect_message    "Downloading done. Requesting lists refreshing"
+      The stdout should satisfy spec_expect_message    "Sending a request to blocky to refresh lists"
       The stdout should satisfy spec_expect_message    "Found changes in /web/watch. Requesting lists refreshing."
+      The stdout should satisfy spec_expect_message    "Sent notification via Apprise"
+      The stdout should satisfy spec_expect_no_message "Invalid JSON Payload provided"
+      The stdout should satisfy spec_expect_message    "Subject\":\"Blocky lists refresh succeeded"
+      The stdout should satisfy spec_expect_message    "Snippet\":\"HTTP/1.1 200 OK"
+      The stderr should satisfy display_output
+    End
+  End
+  Describe "test_timer_and_notify_apprise"
+    test_timer_and_notify_apprise() {
+      echo "=============================="
+      echo "Starting test_timer_and_notify_apprise"
+      local RETURN_VALUE=0
+      local DIR WEB_DIR SOURCES_DIR WATCH_DIR
+      DIR=$(mktemp -d) || return 1
+      WEB_DIR=$(mkdir "${DIR}/web" && echo "${DIR}/web") || return 1
+      SOURCES_DIR=$(mkdir "${DIR}/sources" && echo "${DIR}/sources") || return 1
+      WATCH_DIR=$(mkdir "${DIR}/watch" && echo "${DIR}/watch") || return 1
+      local LIST_FILE_NAME="list.txt"
+      local LIST_FILE="${WEB_DIR}/${LIST_FILE_NAME}"
+      local SOURCES_FILE="${SOURCES_DIR}/sources.txt"
+      local WATCH_FILE="${WATCH_DIR}/watch.txt"
+      touch "${LIST_FILE}" "${SOURCES_FILE}" "${WATCH_FILE}"
+      echo "LIST_FILE=${LIST_FILE}"
+      echo "SOURCES_FILE=${SOURCES_FILE}"
+      echo "WATCH_FILE=${WATCH_FILE}"
+      # Update the file list.
+      local DOMAIN="google.com"
+      local IP="0.0.0.0"
+      echo "localhost:${FILE_PORT}/${LIST_FILE_NAME}" > "${SOURCES_FILE}"
+      export BLU_INTERVAL_SECONDS=10
+      _setup_containers "${WEB_DIR}" "${SOURCES_DIR}" "${WATCH_DIR}"
+      echo ""
+      echo "At beginning, Blocky should resolve ${DOMAIN}."
+      if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
+        echo "${DOMAIN} is not resolved initially."
+        _print_dut_logs 2>&1
+        return 1
+      fi
+      echo "${DOMAIN} is resolved to ${IP}."
+      echo "Updating files in the source list. Add ${DOMAIN}."
+      echo "${DOMAIN}" > "${LIST_FILE}"
+      # Blocky-lists-updater should update the list every BLU_INTERVAL_SECONDS.
+      echo "Now Blocky should block ${DOMAIN}."
+      if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
+        echo "${DOMAIN} is still resolved. Want ${DOMAIN} to be blocked."
+        _print_dut_logs 2>&1
+        return 1
+      fi
+      echo "${DOMAIN} is resolved to ${IP}."
+      echo "Updating files in the source list. Remove ${DOMAIN}."
+      sed -i "s/${DOMAIN}//g" "${LIST_FILE}"
+      echo "Now Blocky should resolve ${DOMAIN} again."
+      if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
+        echo "${DOMAIN} is not resolved. Want ${DOMAIN} to be resolved."
+        _print_dut_logs 2>&1
+        return 1
+      fi
+      echo "${DOMAIN} is resolved to ${IP}."
+      _print_dut_logs 2>&1
+      _print_and_cleanup_emails 2>&1
+      # _print_containers_logs 1>&2
+      rm -r "${DIR}"
+      return "${RETURN_VALUE}"
+    }
+    AfterEach "_teardown"
+    It 'run_test'
+      When run test_timer_and_notify_apprise
+      The status should be success
+      The stdout should satisfy display_output
+      The stdout should satisfy spec_expect_no_message "Found changes in /sources. Requesting lists downloading."
+      The stdout should satisfy spec_expect_message    "Running scheduled download."
+      The stdout should satisfy spec_expect_message    "post-download .*sources.txt-current.txt"
+      The stdout should satisfy spec_expect_message    "post-merging /web/downloaded/sources.txt"
+      The stdout should satisfy spec_expect_message    "Downloading done. Requesting lists refreshing"
+      The stdout should satisfy spec_expect_message    "Sending a request to blocky to refresh lists"
+      The stdout should satisfy spec_expect_no_message "Found changes in /web/watch. Requesting lists refreshing."
       The stdout should satisfy spec_expect_message    "Sent notification via Apprise"
       The stdout should satisfy spec_expect_no_message "Invalid JSON Payload provided"
       The stdout should satisfy spec_expect_message    "Subject\":\"Blocky lists refresh succeeded"
