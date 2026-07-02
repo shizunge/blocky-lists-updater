@@ -35,7 +35,7 @@ services:
       # Port used by the static-web-server.
       - "BLU_WEB_PORT=8080"
     volumes:
-      - ./lists/sources/sources:ro
+      - ./lists/sources:/sources:ro
       - ./lists/watch:/web/watch:ro
       - ./post-download.sh:/scripts/post-download.sh:ro
       - ./post-merging.sh:/scripts/post-merging.sh:ro
