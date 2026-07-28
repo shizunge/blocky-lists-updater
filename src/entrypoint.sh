@@ -228,7 +228,7 @@ start_watching_files() {
   log INFO "Start watching changes in ${WATCH_FOLDER}."
   while true; do
     log DEBUG "Waiting for changes in ${WATCH_FOLDER}."
-    inotifywait -r -e modify -e attrib -e move -e create -e delete "${WATCH_FOLDER}" 2>&1 | log_lines DEBUG
+    inotifywait -r -e modify -e move -e create -e delete "${WATCH_FOLDER}" 2>&1 | log_lines DEBUG
     log INFO "Found changes in ${WATCH_FOLDER}. Requesting lists refreshing."
     _request_refresh
   done
@@ -253,7 +253,7 @@ start_watching_sources() {
       TIMEOUT_ARG="--timeout"
       TIMEOUT_SEC=$(( NEXT_RUN_TARGET_TIME - $(date +%s) ))
     fi
-    if LOG=$(inotifywait -q -r -e modify -e attrib -e move -e create -e delete "${TIMEOUT_ARG}" "${TIMEOUT_SEC}" "${SOURCES_FOLDER}" 2>&1); then
+    if LOG=$(inotifywait -q -r -e modify -e move -e create -e delete "${TIMEOUT_ARG}" "${TIMEOUT_SEC}" "${SOURCES_FOLDER}" 2>&1); then
       # 0 - An event you asked to watch for was received.
       echo "${LOG}" | log_lines DEBUG
       log INFO "Found changes in ${SOURCES_FOLDER}. Requesting lists downloading."
