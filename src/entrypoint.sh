@@ -148,6 +148,29 @@ _post_blocky_lists_refresh() {
   _notify_via_apprise "${APPRISE_URL}" "${NOTIFICATION_TYPE}" "${NOTIFICATION_TITLE}" "${LOG}"
 }
 
+_handle_first_refresh_request() {
+  [ -z "${STATIC_VAR_INITIAL_DELAY_FILE}" ] && log ERROR "STATIC_VAR_INITIAL_DELAY_FILE is empty" && return 1
+  if [ ! -f "${STATIC_VAR_INITIAL_DELAY_FILE}" ]; then
+    return 0
+  fi
+  local TARGET
+  TARGET=$(cat "${STATIC_VAR_INITIAL_DELAY_FILE}")
+  local SLEEP_SECONDS=$((TARGET - $(date +%s)))
+  if [ "${SLEEP_SECONDS}" -gt 0 ]; then
+    log INFO "Sleep ${SLEEP_SECONDS} seconds before sending the first refresh request."
+    sleep "${SLEEP_SECONDS}"
+  fi
+  rm "${STATIC_VAR_INITIAL_DELAY_FILE}"
+}
+
+_request_refresh() {
+  _handle_first_refresh_request
+  [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
+  # Send a refresh request until watches established.
+  while ! pgrep -f "^inotifywait.*${STATIC_VAR_REQUEST_REFRESH_FILE}" >/dev/null; do sleep 1; done
+  date +%s > "${STATIC_VAR_REQUEST_REFRESH_FILE}"
+}
+
 start_refresh_service() {
   export LOG_SCOPE="refresh_service"
   local BLOCKY_URL="${1}"
@@ -167,25 +190,16 @@ start_refresh_service() {
     if [ "${CURRENT_FILE_TIME}" -gt "${LAST_FILE_TIME}" ]; then
       # During refreshing, the source or watched files changed again.
       log DEBUG "Receive another request during refreshing lists."
-      sleep 2 && _request_refresh &
+      _request_refresh &
     fi
   done
 }
 
-_request_refresh() {
-  [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
-  [ -z "${STATIC_VAR_INITIAL_DELAY_FILE}" ] && log ERROR "STATIC_VAR_INITIAL_DELAY_FILE is empty" && return 1
-  if [ -f "${STATIC_VAR_INITIAL_DELAY_FILE}" ]; then
-    local TARGET
-    TARGET=$(cat "${STATIC_VAR_INITIAL_DELAY_FILE}")
-    local SLEEP_SECONDS=$((TARGET - $(date +%s)))
-    if [ "${SLEEP_SECONDS}" -gt 0 ]; then
-      log INFO "Sleep ${SLEEP_SECONDS} seconds before sending the first refresh request."
-      sleep "${SLEEP_SECONDS}"
-    fi
-    rm "${STATIC_VAR_INITIAL_DELAY_FILE}"
-  fi
-  date +%s > "${STATIC_VAR_REQUEST_REFRESH_FILE}"
+_request_download() {
+  [ -z "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_DOWNLOAD_FILE is empty" && return 1
+  # Send a download request until watches established.
+  while ! pgrep -f "^inotifywait.*${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" >/dev/null; do sleep 1; done
+  date +%s > "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}"
 }
 
 start_download_service() {
@@ -211,14 +225,9 @@ start_download_service() {
     if [ "${CURRENT_FILE_TIME}" -gt "${LAST_FILE_TIME}" ]; then
       # During downloading, the source files changed again.
       log DEBUG "Receive another download request during downloading."
-      sleep 2 && _request_download &
+      _request_download &
     fi
   done
-}
-
-_request_download() {
-  [ -z "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_DOWNLOAD_FILE is empty" && return 1
-  date +%s > "${STATIC_VAR_REQUEST_DOWNLOAD_FILE}"
 }
 
 start_watching_files() {
@@ -253,7 +262,7 @@ start_watching_sources() {
       TIMEOUT_ARG="--timeout"
       TIMEOUT_SEC=$(( NEXT_RUN_TARGET_TIME - $(date +%s) ))
     fi
-    if LOG=$(inotifywait -q -r -e modify -e move -e create -e delete "${TIMEOUT_ARG}" "${TIMEOUT_SEC}" "${SOURCES_FOLDER}" 2>&1); then
+    if LOG=$(inotifywait -r -e modify -e move -e create -e delete "${TIMEOUT_ARG}" "${TIMEOUT_SEC}" "${SOURCES_FOLDER}" 2>&1); then
       # 0 - An event you asked to watch for was received.
       echo "${LOG}" | log_lines DEBUG
       log INFO "Found changes in ${SOURCES_FOLDER}. Requesting lists downloading."
