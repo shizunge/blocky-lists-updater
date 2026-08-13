@@ -88,8 +88,9 @@ _start_blocky_lists_updater() {
     -e "BLU_INITIAL_DELAY_SECONDS=0" \
     -e "BLU_INTERVAL_SECONDS=${BLU_INTERVAL_SECONDS}" \
     -e "BLU_NOTIFICATION_APPRISE_URL=http://localhost:${APPRISE_PORT}/notify" \
-    -e "BLU_POST_DOWNLOAD_CMD=echo post-download" \
-    -e "BLU_POST_MERGING_CMD=echo post-merging" \
+    -e "BLU_POST_DOWNLOAD_CMD=${BLU_POST_DOWNLOAD_CMD}" \
+    -e "BLU_POST_MERGING_CMD=${BLU_POST_MERGING_CMD}" \
+    -e "BLU_POST_REFRESH_CMD=${BLU_POST_REFRESH_CMD}" \
     -e "BLU_SOURCES_FOLDER=/sources" \
     -e "BLU_WATCH_FOLDER=/web/watch" \
     -e "BLU_WEB_FOLDER=/web" \
@@ -216,6 +217,9 @@ Describe 'blu_test'
       local IP="0.0.0.0"
       echo "${DOMAIN}" > "${LIST_FILE}"
       export BLU_INTERVAL_SECONDS=86400
+      export BLU_POST_DOWNLOAD_CMD=
+      export BLU_POST_MERGING_CMD=
+      export BLU_POST_REFRESH_CMD=
       _setup_containers "${WEB_DIR}" "${SOURCES_DIR}" "${WATCH_DIR}"
       echo ""
       echo "At beginning, Blocky should resolve ${DOMAIN}."
@@ -256,12 +260,13 @@ Describe 'blu_test'
       The stdout should satisfy display_output
       The stdout should satisfy spec_expect_message    "Found changes in /sources. Requesting lists downloading."
       The stdout should satisfy spec_expect_no_message "Running scheduled download."
-      The stdout should satisfy spec_expect_message    "post-download .*sources.txt-current.txt"
-      The stdout should satisfy spec_expect_message    "post-merging /web/downloaded/sources.txt"
+      The stdout should satisfy spec_expect_no_message "Run post-download command"
+      The stdout should satisfy spec_expect_no_message "Run post-merging command"
       The stdout should satisfy spec_expect_message    "Downloading done. Requesting lists refreshing"
       The stdout should satisfy spec_expect_message    "Sending a request to blocky to refresh lists"
       The stdout should satisfy spec_expect_message    "Found changes in /web/watch. Requesting lists refreshing."
       The stdout should satisfy spec_expect_message    "Sent notification via Apprise"
+      The stdout should satisfy spec_expect_no_message "Run post-refresh command"
       The stdout should satisfy spec_expect_no_message "Invalid JSON Payload provided"
       The stdout should satisfy spec_expect_message    "Subject\":\"Blocky lists refresh succeeded"
       The stdout should satisfy spec_expect_message    "Snippet\":\"HTTP/1.1 200 OK"
@@ -291,6 +296,9 @@ Describe 'blu_test'
       local IP="0.0.0.0"
       echo "localhost:${FILE_PORT}/${LIST_FILE_NAME}" > "${SOURCES_FILE}"
       export BLU_INTERVAL_SECONDS=10
+      export BLU_POST_DOWNLOAD_CMD=
+      export BLU_POST_MERGING_CMD=
+      export BLU_POST_REFRESH_CMD=
       _setup_containers "${WEB_DIR}" "${SOURCES_DIR}" "${WATCH_DIR}"
       echo ""
       echo "At beginning, Blocky should resolve ${DOMAIN}."
@@ -332,15 +340,73 @@ Describe 'blu_test'
       The stdout should satisfy display_output
       The stdout should satisfy spec_expect_no_message "Found changes in /sources. Requesting lists downloading."
       The stdout should satisfy spec_expect_message    "Running scheduled download."
-      The stdout should satisfy spec_expect_message    "post-download .*sources.txt-current.txt"
-      The stdout should satisfy spec_expect_message    "post-merging /web/downloaded/sources.txt"
+      The stdout should satisfy spec_expect_no_message "Run post-download command"
+      The stdout should satisfy spec_expect_no_message "Run post-merging command"
       The stdout should satisfy spec_expect_message    "Downloading done. Requesting lists refreshing"
       The stdout should satisfy spec_expect_message    "Sending a request to blocky to refresh lists"
       The stdout should satisfy spec_expect_no_message "Found changes in /web/watch. Requesting lists refreshing."
       The stdout should satisfy spec_expect_message    "Sent notification via Apprise"
+      The stdout should satisfy spec_expect_no_message "Run post-refresh command"
       The stdout should satisfy spec_expect_no_message "Invalid JSON Payload provided"
       The stdout should satisfy spec_expect_message    "Subject\":\"Blocky lists refresh succeeded"
       The stdout should satisfy spec_expect_message    "Snippet\":\"HTTP/1.1 200 OK"
+      The stderr should satisfy display_output
+    End
+  End
+  Describe "test_post_cmd"
+    test_post_cmd() {
+      echo "=============================="
+      echo "Starting test_post_cmd"
+      local RETURN_VALUE=0
+      local DIR WEB_DIR SOURCES_DIR WATCH_DIR
+      DIR=$(mktemp -d) || return 1
+      WEB_DIR=$(mkdir "${DIR}/web" && echo "${DIR}/web") || return 1
+      SOURCES_DIR=$(mkdir "${DIR}/sources" && echo "${DIR}/sources") || return 1
+      WATCH_DIR=$(mkdir "${DIR}/watch" && echo "${DIR}/watch") || return 1
+      local LIST_FILE_NAME="list.txt"
+      local LIST_FILE="${WEB_DIR}/${LIST_FILE_NAME}"
+      local SOURCES_FILE="${SOURCES_DIR}/sources.txt"
+      local WATCH_FILE="${WATCH_DIR}/watch.txt"
+      touch "${LIST_FILE}" "${SOURCES_FILE}" "${WATCH_FILE}"
+      local DOMAIN="google.com"
+      local IP="0.0.0.0"
+      echo "${DOMAIN}" > "${LIST_FILE}"
+      export BLU_INTERVAL_SECONDS=86400
+      export BLU_POST_DOWNLOAD_CMD="echo post-download"
+      export BLU_POST_MERGING_CMD="echo post-merging"
+      export BLU_POST_REFRESH_CMD="curl --silent --show-error -X POST http://localhost:${BLOCKY_PORT}/api/cache/flush"
+      _setup_containers "${WEB_DIR}" "${SOURCES_DIR}" "${WATCH_DIR}"
+      echo ""
+      echo "At beginning, Blocky should resolve ${DOMAIN}."
+      if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
+        echo "${DOMAIN} is not resolved initially."
+        _print_dut_logs 2>&1
+        return 1
+      fi
+      echo "${DOMAIN} is resolved to ${IP}."
+      echo "Updating source lists."
+      echo "localhost:${FILE_PORT}/${LIST_FILE_NAME}" > "${SOURCES_FILE}"
+      echo "Now Blocky should block ${DOMAIN}."
+      if ! IP=$(_wait_for_dns_change "${IP}" "${DOMAIN}"); then
+        echo "${DOMAIN} is still resolved. Want ${DOMAIN} to be blocked."
+        _print_dut_logs 2>&1
+        return 1
+      fi
+      _print_dut_logs 2>&1
+      _print_and_cleanup_emails 2>&1
+      # _print_containers_logs 1>&2
+      rm -r "${DIR}"
+      return "${RETURN_VALUE}"
+    }
+    AfterEach "_teardown"
+    It 'run_test'
+      When run test_post_cmd
+      The status should be success
+      The stdout should satisfy display_output
+      The stdout should satisfy spec_expect_message    "Run post-download command: echo post-download .*sources.txt-current.txt"
+      The stdout should satisfy spec_expect_message    "Run post-merging command: echo post-merging /web/downloaded/sources.txt"
+      The stdout should satisfy spec_expect_message    "Run post-refresh command: curl --silent --show-error -X POST http://localhost:${BLOCKY_PORT}/api/cache/flush"
+      The stdout should satisfy spec_expect_message    "Finish post-refresh command."
       The stderr should satisfy display_output
     End
   End

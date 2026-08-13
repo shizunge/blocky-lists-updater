@@ -125,6 +125,7 @@ _notify_via_apprise() {
 _post_blocky_lists_refresh() {
   local BLOCKY_URL="${1}"
   local APPRISE_URL="${2}"
+  local POST_REFRESH_CMD="${3}"
   [ -z "${BLOCKY_URL}" ] && log INFO "Skip sending a request to blocky. BLOCKY_URL is empty." && return 1
   local API="/api/lists/refresh"
   local START_TIME=
@@ -134,10 +135,13 @@ _post_blocky_lists_refresh() {
   local NOTIFICATION_TITLE=
   log INFO "Sending a request to blocky to refresh lists."
   START_TIME=$(date +%s)
-  if LOG=$(curl -X POST --show-error --silent --head "${BLOCKY_URL}${API}" 2>&1); then
+  if LOG=$(curl --silent --show-error -X POST --head "${BLOCKY_URL}${API}" 2>&1); then
     log INFO "${LOG}"
     NOTIFICATION_TYPE="success"
     NOTIFICATION_TITLE="Blocky lists refresh succeeded"
+    if [ -n "${POST_REFRESH_CMD}" ]; then
+      eval_cmd "post-refresh" "${POST_REFRESH_CMD}"
+    fi
   else
     log ERROR "${LOG}"
     NOTIFICATION_TYPE="failure"
@@ -175,6 +179,7 @@ start_refresh_service() {
   export LOG_SCOPE="refresh_service"
   local BLOCKY_URL="${1}"
   local APPRISE_URL="${2}"
+  local POST_REFRESH_CMD="${3}"
   [ -z "${STATIC_VAR_REQUEST_REFRESH_FILE}" ] && log ERROR "STATIC_VAR_REQUEST_REFRESH_FILE is empty" && return 1
   [ -z "${BLOCKY_URL}" ] && log INFO "Skip refresh service BLOCKY_URL is empty." && return 1
   local LAST_FILE_TIME=
@@ -183,7 +188,7 @@ start_refresh_service() {
     log DEBUG "Waiting for the next refresh request."
     inotifywait -r -e modify -e attrib -e move -e create -e delete "${STATIC_VAR_REQUEST_REFRESH_FILE}" 2>&1 | log_lines DEBUG
     LAST_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_REFRESH_FILE}")
-    _post_blocky_lists_refresh "${BLOCKY_URL}" "${APPRISE_URL}"
+    _post_blocky_lists_refresh "${BLOCKY_URL}" "${APPRISE_URL}" "${POST_REFRESH_CMD}"
     CURRENT_FILE_TIME=$(head -1 "${STATIC_VAR_REQUEST_REFRESH_FILE}")
     log DEBUG "LAST_FILE_TIME=${LAST_FILE_TIME}"
     log DEBUG "CURRENT_FILE_TIME=${CURRENT_FILE_TIME}"
@@ -283,7 +288,7 @@ main() {
   NODE_NAME="${BLU_NODE_NAME:-${NODE_NAME}}"
   export LOG_FORMAT LOG_LEVEL NODE_NAME
   local BLOCKY_URL DESTINATION_FOLDER INITIAL_DELAY_SECONDS INTERVAL_SECONDS APPRISE_URL
-  local SOURCES_FOLDER POST_DOWNLOAD_CMD POST_MERGING_CMD WATCH_FOLDER WEB_FOLDER WEB_PORT
+  local SOURCES_FOLDER POST_DOWNLOAD_CMD POST_MERGING_CMD WATCH_FOLDER WEB_FOLDER WEB_PORT POST_REFRESH_CMD
   BLOCKY_URL=$(read_env "BLU_BLOCKY_URL" "")
   DESTINATION_FOLDER=$(read_env "BLU_DESTINATION_FOLDER" "/web/downloaded")
   INITIAL_DELAY_SECONDS=$(read_env "BLU_INITIAL_DELAY_SECONDS" 0)
@@ -292,6 +297,7 @@ main() {
   SOURCES_FOLDER=$(read_env "BLU_SOURCES_FOLDER" "/sources")
   POST_DOWNLOAD_CMD=$(read_env "BLU_POST_DOWNLOAD_CMD" "")
   POST_MERGING_CMD=$(read_env "BLU_POST_MERGING_CMD" "")
+  POST_REFRESH_CMD=$(read_env "BLU_POST_REFRESH_CMD" "")
   WATCH_FOLDER=$(read_env "BLU_WATCH_FOLDER" "/web/watch")
   WEB_FOLDER=$(read_env "BLU_WEB_FOLDER" "/web")
   WEB_PORT=$(read_env "BLU_WEB_PORT" 8080)
@@ -311,6 +317,7 @@ main() {
   log DEBUG "SOURCES_FOLDER=${SOURCES_FOLDER}"
   log DEBUG "POST_DOWNLOAD_CMD=${POST_DOWNLOAD_CMD}"
   log DEBUG "POST_MERGING_CMD=${POST_MERGING_CMD}"
+  log DEBUG "POST_REFRESH_CMD=${POST_REFRESH_CMD}"
   log DEBUG "WATCH_FOLDER=${WATCH_FOLDER}"
   log DEBUG "WEB_FOLDER=${WEB_FOLDER}"
   log DEBUG "WEB_PORT=${WEB_PORT}"
@@ -320,7 +327,7 @@ main() {
   start_web_server "${WEB_FOLDER}" "${WEB_PORT}" &
   PIDS="${!} ${PIDS}"
   sleep 1
-  start_refresh_service "${BLOCKY_URL}" "${APPRISE_URL}" &
+  start_refresh_service "${BLOCKY_URL}" "${APPRISE_URL}" "${POST_REFRESH_CMD}" &
   PIDS="${!} ${PIDS}"
   sleep 1
   start_download_service "${SOURCES_FOLDER}" "${DESTINATION_FOLDER}" "${POST_DOWNLOAD_CMD}" "${POST_MERGING_CMD}" &

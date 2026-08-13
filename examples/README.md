@@ -7,3 +7,5 @@
 `post-download.sh` is used to fix problems in the lists downloaded before the upstream maintainer fixing it. We set environment variable `BLU_POST_DOWNLOAD_CMD=source /scripts/post-download.sh` to apply it to all lists downloaded.
 
 `post-merging.sh` is used to deduplicate entries in the merged file. We set environment variable `BLU_POST_MERGING_CMD=source /scripts/post-merging.sh` to apply it to merged files.
+
+`post-refresh.sh` can be used to flush the cache of blocky. We set environment variable `BLU_POST_REFRESH_CMD=source /scripts/post-refresh.sh` to apply it after sending refresh requests to blocky.
